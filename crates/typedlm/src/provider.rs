@@ -164,7 +164,7 @@ pub enum FinishReason {
     Refusal,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Usage {
     pub input_tokens: u64,
     pub output_tokens: u64,

@@ -75,6 +75,22 @@ struct Line<S> {
     expected: Map<String, Value>,
 }
 
+impl<S: Signature> Dataset<S> {
+    /// SHA-256 over the examples (inputs and labels) as canonical JSON, hex-encoded.
+    pub fn fingerprint(&self) -> String {
+        let examples: Vec<Value> = self
+            .examples
+            .iter()
+            .map(|e| {
+                let input = serde_json::to_value(&e.input).expect("inputs serialize to JSON");
+                serde_json::json!({ "input": input, "expected": e.expected })
+            })
+            .collect();
+        let canonical = serde_json::to_vec(&examples).expect("JSON values always serialize");
+        crate::sha256::hex(&crate::sha256::sha256(&canonical))
+    }
+}
+
 impl<S: Signature + DeserializeOwned> Dataset<S> {
     pub fn from_jsonl(path: impl AsRef<Path>) -> Result<Self, DatasetError> {
         let path = path.as_ref();
@@ -125,6 +141,9 @@ fn labelled_fields_schema(mut schema: Value) -> Value {
     }
     schema
 }
+
+mod regression;
+pub use regression::{Baseline, BaselineOutcome, Comparison, RegressionError, Verdict, compare};
 
 /// Scores one answer against its example, from 0.0 (wrong) to 1.0 (right).
 pub trait Metric<S: Signature> {
@@ -207,9 +226,11 @@ fn values_equal(a: &Value, b: &Value) -> bool {
 
 /// Result of [`evaluate`]. Holds no model output; failures carry the error's
 /// `Display`, which never includes it.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Report {
     pub program: String,
+    /// SHA-256 of the dataset's examples; reports are only comparable when it matches.
+    pub dataset: String,
     /// Model that answered most often.
     pub model: Option<String>,
     pub metric: String,
@@ -226,12 +247,14 @@ pub struct Report {
     pub failed: usize,
     /// Example index (0-based) and error, for every failed run.
     pub failures: Vec<(usize, String)>,
+    /// Metric score per example, in dataset order; failed runs score 0.
+    pub scores: Vec<f64>,
     pub latency_p50_ms: u64,
     pub latency_p95_ms: u64,
     pub usage: Usage,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldReport {
     pub name: String,
     pub correct: usize,
@@ -328,6 +351,7 @@ where
     latencies.sort();
     Report {
         program: S::NAME.to_string(),
+        dataset: dataset.fingerprint(),
         model: models.into_iter().max_by_key(|(_, n)| *n).map(|(m, _)| m),
         metric: metric.name().to_string(),
         examples: scores.len(),
@@ -338,6 +362,7 @@ where
         repaired,
         failed: failures.len(),
         failures,
+        scores,
         latency_p50_ms: percentile(&latencies, 50).as_millis() as u64,
         latency_p95_ms: percentile(&latencies, 95).as_millis() as u64,
         usage,

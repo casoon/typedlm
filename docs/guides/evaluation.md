@@ -59,15 +59,53 @@ Failed runs score 0. The report contains:
 - how many answers were valid at once, needed repair, or failed — with the error per failure,
 - latency P50 and P95, token usage including failed runs, and the model that answered most often.
 
-It holds no model output and serialises with serde, e.g. to store it next to the dataset.
+It holds no model output — only scores per example and a fingerprint of the dataset —
+and serialises with serde in both directions.
 
 ## Reading the interval
 
 Eight examples at 87.5 % give an interval from 53 % to 98 %. A difference between two runs means
 something only when the intervals barely overlap. Grow the dataset before drawing conclusions.
 
-## In tests
+## Regression tests
 
-Evaluations call a real model: they cost money, need the network and vary between runs. Keep them
-out of the default `cargo test`, for example behind `#[ignore]` or an environment variable, and
-compare against a threshold with room for the interval.
+A stored report is a baseline. Later runs are compared with it example by example, which
+detects a real change with far fewer examples than comparing two averages.
+
+```rust
+use typedlm::eval::{Baseline, ExactMatch, evaluate};
+
+#[tokio::test]
+#[ignore = "calls a model"]
+async fn classifier_has_not_regressed() {
+    let report = evaluate(&classify, &dataset, &ExactMatch, 4).await;
+    report.require_score(0.9).unwrap();
+    Baseline::at("tests/baselines/classify.json").check(&report).unwrap();
+}
+```
+
+- The first run writes the baseline; commit it.
+- Later runs fail only on a **significant** drop: the whole 95 % interval of the
+  per-example difference lies below zero (or below `-tolerance`, set with
+  `Baseline::tolerance(0.02)` for two points).
+- The error lists which examples got worse:
+
+```text
+exact match 100.0 % → 60.0 % (-40.0 points, 95 % CI -63.5 – -16.5) on 20 examples, 8 worse, 0 better: regression; worse examples: 0, 1, 5, 6, 10, 11, 15, 16
+```
+
+- After a deliberate change — another model, new instructions — accept the new state with
+  `TYPEDLM_UPDATE_BASELINES=1 cargo test …`.
+- A baseline only compares with a run on the same examples: reports carry a SHA-256 of
+  the dataset, and a changed dataset is rejected instead of compared.
+- `require_score(minimum)` fails only when even the upper end of the interval is below the
+  minimum, so a small dataset does not fail by chance.
+
+`compare(&baseline, &current, tolerance)` returns the same `Comparison` without files, for
+your own tooling.
+
+## Keeping evaluations out of the default test run
+
+Evaluations call a real model: they cost money, need the network and vary between runs.
+Keep them out of the default `cargo test`, for example behind `#[ignore]` or an
+environment variable, and run them deliberately before changing model or instructions.

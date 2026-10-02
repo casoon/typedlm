@@ -67,6 +67,9 @@ the output type becomes the JSON Schema.
 - **Evaluation.** Datasets in JSON Lines with partial labels, `ExactMatch` and
   `FieldAccuracy`, and a report with a 95 % confidence interval, per-field accuracy,
   repair and failure rates, latency percentiles and token usage.
+- **Regression tests.** Store a report as baseline; later runs are compared example by
+  example and fail only on a statistically significant drop, naming the examples that
+  got worse.
 - **Tracing.** One `tracing` span per call with OpenTelemetry GenAI field names.
   Inputs and answers are only recorded on request.
 
@@ -103,6 +106,11 @@ println!("{report}");
 
 The interval is the point: eight examples say little, and the report shows it.
 
+```rust
+// In a test: fails only on a significant drop against the stored run.
+Baseline::at("tests/baselines/classify.json").check(&report)?;
+```
+
 ## Examples
 
 ```sh
@@ -129,8 +137,7 @@ Without default features the crate depends on `serde`, `serde_json`, `schemars` 
 
 Early development, not published on crates.io yet. Tested live against Ollama
 (qwen3:32b) with all four strategies; OpenAI has not been tested live yet. Not
-included yet: regression baselines, a CLI, compiled programs and prompt
-optimisation. MSRV 1.85.
+included yet: a CLI, compiled programs and prompt optimisation. MSRV 1.85.
 
 ## License
 

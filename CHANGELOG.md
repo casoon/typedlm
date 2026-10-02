@@ -14,3 +14,6 @@ All notable changes to this project are documented in this file. The format foll
 - Evaluation: datasets with partial labels, `ExactMatch`, `FieldAccuracy`, reports with
   confidence intervals.
 - Tracing spans with OpenTelemetry GenAI field names.
+- Regression tests: `Baseline` stores a report and compares later runs example by example,
+  `compare` for paired comparisons, `Report::require_score` against the interval. Reports
+  carry per-example scores and a dataset fingerprint and can be read back.

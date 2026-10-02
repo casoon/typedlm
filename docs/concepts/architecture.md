@@ -25,6 +25,8 @@ Modules in `crates/typedlm/src/`:
 | `error.rs` | `Error`, repair feedback |
 | `http.rs` | `OpenAiCompatible` (feature `http`) |
 | `eval.rs` | datasets, metrics, `evaluate`, `Report` (feature `eval`) |
+| `eval/regression.rs` | `Baseline`, `compare`, `Report::require_score` |
+| `sha256.rs` | dataset fingerprints |
 
 ## Signature
 
@@ -61,4 +63,6 @@ DynProvider>` is a provider again. Transport retries live in the provider, repai
 
 `evaluate` runs every example through `Program::execute` with a concurrency limit
 (`futures-util`, no runtime binding) and builds a `Report` from the outcomes. It reuses the
-schema validator to check dataset labels when loading.
+schema validator to check dataset labels when loading. The report keeps each example's
+score and a SHA-256 of the dataset, so `eval/regression.rs` can compare two runs pairwise and
+refuse runs on different examples.
