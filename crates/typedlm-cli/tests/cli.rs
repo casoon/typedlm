@@ -108,7 +108,7 @@ fn run_saves_snapshots_and_prints_a_matrix_for_several_models() {
         "{matrix}"
     );
 
-    let snapshots = std::fs::read_dir(dir.join("snapshots/Classify"))
+    let snapshots = std::fs::read_dir(dir.join("snapshots/classify"))
         .unwrap()
         .count();
     assert_eq!(snapshots, 2);
@@ -157,7 +157,7 @@ fn report_tool_works_on_files() {
     let evals = evals(&dir);
     run(&evals, &["run", "--model", "good"]);
     run(&evals, &["run", "--model", "lazy"]);
-    let mut files: Vec<PathBuf> = std::fs::read_dir(dir.join("snapshots/Classify"))
+    let mut files: Vec<PathBuf> = std::fs::read_dir(dir.join("snapshots/classify"))
         .unwrap()
         .map(|e| e.unwrap().path())
         .collect();
@@ -175,7 +175,7 @@ fn report_tool_works_on_files() {
     assert_eq!(tool(&["compare", lazy, good]).0, 0);
     assert_eq!(tool(&["compare", good, lazy, "--tolerance", "0.7"]).0, 0);
 
-    let (code, out) = tool(&["history", dir.join("snapshots/Classify").to_str().unwrap()]);
+    let (code, out) = tool(&["history", dir.join("snapshots/classify").to_str().unwrap()]);
     assert_eq!(code, 0);
     assert!(out.contains("good") && out.contains("lazy"), "{out}");
 }
