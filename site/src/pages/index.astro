@@ -96,14 +96,16 @@ match ticket.urgency {
     ]}
   />
 
-  <CodeBlock code={signature} lang="rust" title="The contract" label="Rust" />
+  <section class="contract">
+    <CodeBlock code={signature} lang="rust" title="The contract" label="Rust" />
+  </section>
 
   <BuildOutput
     caption="Recorded with qwen3:32b on a local Ollama (cargo run --example evaluation). Eight examples give an interval from 53 to 98 percent — the report says so."
     file="examples/recorded/evaluation.txt"
   >
     <img
-      class="terminal-demo"
+      class="terminal-demo terminal-demo--framed"
       src={evaluationSvg}
       width="562"
       height="314"
@@ -124,10 +126,22 @@ match ticket.urgency {
 </Base>
 
 <style>
+  .contract {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+  /* Never scale the SVGs beyond a readable terminal size. */
   .terminal-demo {
     display: block;
     width: 100%;
+    max-width: 720px;
     height: auto;
-    max-width: 100%;
+    margin: 0 auto;
+  }
+  .terminal-demo--framed {
+    padding: 24px;
+    box-sizing: content-box;
+    max-width: min(720px, calc(100% - 48px));
   }
 </style>
