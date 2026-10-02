@@ -38,6 +38,34 @@ impl<P: Provider> DynProvider for P {
     }
 }
 
+/// A borrowed provider, so a test can inspect it after handing it to a program.
+impl<P: Provider> Provider for &P {
+    fn capabilities(&self) -> Capabilities {
+        (**self).capabilities()
+    }
+
+    fn complete(
+        &self,
+        request: Request,
+    ) -> impl Future<Output = Result<Response, ProviderError>> + Send {
+        (**self).complete(request)
+    }
+}
+
+/// A shared provider, e.g. one client for several programs.
+impl<P: Provider> Provider for std::sync::Arc<P> {
+    fn capabilities(&self) -> Capabilities {
+        (**self).capabilities()
+    }
+
+    fn complete(
+        &self,
+        request: Request,
+    ) -> impl Future<Output = Result<Response, ProviderError>> + Send {
+        (**self).complete(request)
+    }
+}
+
 impl Provider for Box<dyn DynProvider> {
     fn capabilities(&self) -> Capabilities {
         (**self).capabilities()
@@ -52,7 +80,7 @@ impl Provider for Box<dyn DynProvider> {
 }
 
 /// What a provider supports for getting structured output.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Capabilities {
     /// Supported strategies; the strongest one is chosen unless overridden.
     pub strategies: Vec<Strategy>,
@@ -81,7 +109,10 @@ impl Capabilities {
 }
 
 /// How structured output is obtained, strongest first.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
+#[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Strategy {
     /// The provider enforces the schema while decoding.
@@ -107,7 +138,8 @@ impl Strategy {
 }
 
 /// JSON Schema flavour accepted by a provider.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum SchemaDialect {
     /// Strict structured outputs of OpenAI-compatible APIs: every property
@@ -117,7 +149,7 @@ pub enum SchemaDialect {
     Generic,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Request {
     /// System instructions, complete: they already describe the schema when the
     /// strategy does not transport it.
@@ -132,19 +164,19 @@ pub struct Request {
     pub repair: Vec<RepairTurn>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RepairTurn {
     pub response: String,
     pub feedback: String,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct GenerationOptions {
     pub temperature: Option<f32>,
     pub max_tokens: Option<u32>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Response {
     /// Raw answer text, before parsing and validation.
     pub content: String,
@@ -154,7 +186,8 @@ pub struct Response {
     pub usage: Usage,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum FinishReason {
     Stop,
@@ -179,6 +212,8 @@ pub enum ProviderError {
     Status { code: u16, body: String },
     /// The provider's answer could not be read.
     InvalidResponse(String),
+    /// Recording or replaying interactions failed (see `typedlm::testing`).
+    Recording(String),
 }
 
 impl fmt::Display for ProviderError {
@@ -187,6 +222,7 @@ impl fmt::Display for ProviderError {
             Self::Transport(msg) => write!(f, "transport error: {msg}"),
             Self::Status { code, body } => write!(f, "provider returned status {code}: {body}"),
             Self::InvalidResponse(msg) => write!(f, "invalid provider response: {msg}"),
+            Self::Recording(msg) => write!(f, "recording: {msg}"),
         }
     }
 }

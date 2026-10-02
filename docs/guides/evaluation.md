@@ -62,6 +62,22 @@ Failed runs score 0. The report contains:
 It holds no model output — only scores per example and a fingerprint of the dataset —
 and serialises with serde in both directions.
 
+## Several runs per example
+
+Models answer differently from run to run, even at temperature 0. Run each example several times
+to see how stable a program is:
+
+```rust
+use typedlm::eval::{EvalOptions, evaluate_with};
+
+let options = EvalOptions { concurrency: 4, epochs: 3 };
+let report = evaluate_with(&classify, &dataset, &ExactMatch, options).await;
+```
+
+The score per example becomes the mean over its runs, and the report counts the examples whose
+runs all scored the same (`consistent`). Valid, repaired and failed are counted per run; tokens
+and latency cover every run.
+
 ## Reading the interval
 
 Eight examples at 87.5 % give an interval from 53 % to 98 %. A difference between two runs means

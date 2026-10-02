@@ -45,5 +45,5 @@ TYPEDLM_LIVE_DIALECT=ollama cargo test --test live -- --ignored --nocapture
   doc comments.
 - **Tracing**: OpenTelemetry GenAI field names, otherwise `typedlm.*`; no inputs or answers without
   opt-in.
-- **Tests**: offline and deterministic. HTTP tests run against a small server inside the test, not
-  a mock crate.
+- **Tests**: offline and deterministic. Use the providers in `typedlm::testing`; HTTP tests run
+  against a small server inside the test, not a mock crate.

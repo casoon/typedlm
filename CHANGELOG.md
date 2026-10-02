@@ -17,3 +17,8 @@ All notable changes to this project are documented in this file. The format foll
 - Regression tests: `Baseline` stores a report and compares later runs example by example,
   `compare` for paired comparisons, `Report::require_score` against the interval. Reports
   carry per-example scores and a dataset fingerprint and can be read back.
+- `evaluate_with` and `EvalOptions`: several runs per example, with a count of examples whose
+  runs agree.
+- `typedlm::testing`: `TestProvider` (fixed or schema-valid answers, recorded requests),
+  `FnProvider`, `Recorder` and `Replay` for offline tests.
+- `Provider` for `&P` and `Arc<P>`; `Request`, `Response` and `Capabilities` serialise.

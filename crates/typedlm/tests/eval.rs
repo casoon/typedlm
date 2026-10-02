@@ -185,3 +185,53 @@ fn dataset_errors_name_the_line_and_field() {
     let missing = Dataset::<Classify>::from_jsonl("does/not/exist.jsonl").unwrap_err();
     assert_eq!(missing.line, 0);
 }
+
+#[tokio::test]
+async fn epochs_average_runs_and_count_consistent_examples() {
+    use std::sync::atomic::AtomicUsize;
+    use typedlm::eval::{EvalOptions, evaluate_with};
+    use typedlm::testing::FnProvider;
+
+    // "flaky" tickets get the right answer only on every second call.
+    let calls = AtomicUsize::new(0);
+    let provider = FnProvider::new(|request| {
+        let text = request.input["text"].as_str().unwrap();
+        // Counts only this example's calls, so the order of jobs does not matter.
+        let flaky = text.contains("flaky");
+        let n = if flaky {
+            calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+        } else {
+            0
+        };
+        let urgency = if flaky && n % 2 == 1 { "Low" } else { "High" };
+        Ok(format!(
+            r#"{{"urgency": "{urgency}", "category": "Technical"}}"#
+        ))
+    });
+    let dataset = Dataset::<Classify>::from_jsonl_str(
+        r#"{"input": {"text": "stable"}, "expected": {"urgency": "High"}}
+{"input": {"text": "flaky"}, "expected": {"urgency": "High"}}"#,
+    )
+    .unwrap();
+    let program = Program::<Classify, _>::new(&provider);
+    let options = EvalOptions {
+        concurrency: 1,
+        epochs: 4,
+    };
+    let report = evaluate_with(&program, &dataset, &ExactMatch, options).await;
+
+    assert_eq!((report.examples, report.epochs), (2, 4));
+    assert_eq!(report.scores[0], 1.0);
+    assert!(
+        report.scores[1] > 0.0 && report.scores[1] < 1.0,
+        "{:?}",
+        report.scores
+    );
+    assert_eq!(report.consistent, 1);
+    assert_eq!(report.valid, 8);
+    assert!(
+        report
+            .to_string()
+            .contains("epochs          4  (1/2 examples consistent)")
+    );
+}

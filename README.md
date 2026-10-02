@@ -69,7 +69,9 @@ the output type becomes the JSON Schema.
   repair and failure rates, latency percentiles and token usage.
 - **Regression tests.** Store a report as baseline; later runs are compared example by
   example and fail only on a statistically significant drop, naming the examples that
-  got worse.
+  got worse. Several runs per example show how stable the answers are.
+- **Testing without a model.** Fixed answers, closures, schema-valid answers, and
+  recording real interactions to replay them offline in `cargo test`.
 - **Tracing.** One `tracing` span per call with OpenTelemetry GenAI field names.
   Inputs and answers are only recorded on request.
 

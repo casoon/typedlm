@@ -143,7 +143,9 @@ fn labelled_fields_schema(mut schema: Value) -> Value {
 }
 
 mod regression;
-pub use regression::{Baseline, BaselineOutcome, Comparison, RegressionError, Verdict, compare};
+pub use regression::{
+    Baseline, BaselineOutcome, Comparison, RegressionError, UPDATE_BASELINES, Verdict, compare,
+};
 
 /// Scores one answer against its example, from 0.0 (wrong) to 1.0 (right).
 pub trait Metric<S: Signature> {
@@ -235,19 +237,26 @@ pub struct Report {
     pub model: Option<String>,
     pub metric: String,
     pub examples: usize,
+    /// Runs per example; scores are the mean over them.
+    #[serde(default = "one")]
+    pub epochs: usize,
+    /// Examples whose runs all scored the same; equals `examples` with one epoch.
+    #[serde(default)]
+    pub consistent: usize,
     /// Mean metric score; failed runs score 0.
     pub score: f64,
     /// 95 % confidence interval of `score`.
     pub interval: (f64, f64),
     pub fields: Vec<FieldReport>,
-    /// Valid on the first attempt.
+    /// Runs valid on the first attempt (out of `examples × epochs`).
     pub valid: usize,
-    /// Valid after one or more repairs.
+    /// Runs valid after one or more repairs.
     pub repaired: usize,
+    /// Runs without a valid answer.
     pub failed: usize,
     /// Example index (0-based) and error, for every failed run.
     pub failures: Vec<(usize, String)>,
-    /// Metric score per example, in dataset order; failed runs score 0.
+    /// Metric score per example (mean over epochs), in dataset order; failed runs score 0.
     pub scores: Vec<f64>,
     pub latency_p50_ms: u64,
     pub latency_p95_ms: u64,
@@ -271,10 +280,34 @@ impl FieldReport {
     }
 }
 
+fn one() -> usize {
+    1
+}
+
+/// How [`evaluate_with`] runs a dataset.
+#[derive(Debug, Clone, Copy)]
+pub struct EvalOptions {
+    /// Model calls in flight at once (default 4).
+    pub concurrency: usize,
+    /// Runs per example (default 1). More than one shows how stable the answers are:
+    /// the score per example becomes the mean, and the report counts the examples whose
+    /// runs agree.
+    pub epochs: usize,
+}
+
+impl Default for EvalOptions {
+    fn default() -> Self {
+        Self {
+            concurrency: 4,
+            epochs: 1,
+        }
+    }
+}
+
 /// Example index, elapsed time and outcome of one evaluation run.
 type Run<T> = (usize, Duration, Result<Execution<T>, Failed>);
 
-/// Runs every example through `program` with at most `concurrency` calls in flight
+/// Runs every example through `program` once, with at most `concurrency` calls in flight,
 /// and scores the answers with `metric`.
 pub async fn evaluate<S, P, M>(
     program: &Program<S, P>,
@@ -288,18 +321,40 @@ where
     P: Provider,
     M: Metric<S>,
 {
-    let mut runs: Vec<Run<S::Output>> = stream::iter(dataset.examples.iter().enumerate())
+    let options = EvalOptions {
+        concurrency,
+        epochs: 1,
+    };
+    evaluate_with(program, dataset, metric, options).await
+}
+
+/// Like [`evaluate`], with every option, e.g. several epochs per example.
+pub async fn evaluate_with<S, P, M>(
+    program: &Program<S, P>,
+    dataset: &Dataset<S>,
+    metric: &M,
+    options: EvalOptions,
+) -> Report
+where
+    S: Signature + Clone,
+    S::Output: Serialize,
+    P: Provider,
+    M: Metric<S>,
+{
+    let epochs = options.epochs.max(1);
+    let jobs = (0..epochs).flat_map(|_| dataset.examples.iter().enumerate());
+    let mut runs: Vec<Run<S::Output>> = stream::iter(jobs)
         .map(|(index, example)| async move {
             let started = Instant::now();
             let result = program.execute(example.input.clone()).await;
             (index, started.elapsed(), result)
         })
-        .buffer_unordered(concurrency.max(1))
+        .buffer_unordered(options.concurrency.max(1))
         .collect()
         .await;
     runs.sort_by_key(|(index, ..)| *index);
 
-    let mut scores = Vec::with_capacity(runs.len());
+    let mut run_scores: Vec<Vec<f64>> = vec![Vec::with_capacity(epochs); dataset.examples.len()];
     let mut latencies = Vec::with_capacity(runs.len());
     let mut fields: BTreeMap<String, FieldReport> = BTreeMap::new();
     let mut models: BTreeMap<String, usize> = BTreeMap::new();
@@ -320,13 +375,13 @@ where
                 } else {
                     repaired += 1
                 }
-                scores.push(metric.score(example, &execution.output));
+                run_scores[index].push(metric.score(example, &execution.output));
                 Some(to_object(&execution.output))
             }
             Err(failed) => {
                 usage.input_tokens += failed.usage.input_tokens;
                 usage.output_tokens += failed.usage.output_tokens;
-                scores.push(0.0);
+                run_scores[index].push(0.0);
                 failures.push((index, failed.error.to_string()));
                 None
             }
@@ -348,6 +403,11 @@ where
         }
     }
 
+    let consistent = run_scores
+        .iter()
+        .filter(|s| s.windows(2).all(|w| w[0] == w[1]))
+        .count();
+    let scores: Vec<f64> = run_scores.iter().map(|s| mean(s)).collect();
     latencies.sort();
     Report {
         program: S::NAME.to_string(),
@@ -355,6 +415,8 @@ where
         model: models.into_iter().max_by_key(|(_, n)| *n).map(|(m, _)| m),
         metric: metric.name().to_string(),
         examples: scores.len(),
+        epochs,
+        consistent,
         score: mean(&scores),
         interval: confidence_interval(&scores),
         fields: fields.into_values().collect(),
@@ -414,6 +476,13 @@ impl fmt::Display for Report {
             writeln!(f, "model           {model}")?;
         }
         writeln!(f, "examples        {}", self.examples)?;
+        if self.epochs > 1 {
+            writeln!(
+                f,
+                "epochs          {}  ({}/{} examples consistent)",
+                self.epochs, self.consistent, self.examples
+            )?;
+        }
         writeln!(
             f,
             "{:<15} {}  (95 % CI {} – {})",
@@ -432,11 +501,12 @@ impl fmt::Display for Report {
                 field.labelled
             )?;
         }
+        let runs = self.examples * self.epochs.max(1);
         let share = |n: usize| {
-            pct(if self.examples == 0 {
+            pct(if runs == 0 {
                 0.0
             } else {
-                n as f64 / self.examples as f64
+                n as f64 / runs as f64
             })
         };
         writeln!(f, "valid           {}", share(self.valid))?;

@@ -26,7 +26,8 @@ Modules in `crates/typedlm/src/`:
 | `http.rs` | `OpenAiCompatible` (feature `http`) |
 | `eval.rs` | datasets, metrics, `evaluate`, `Report` (feature `eval`) |
 | `eval/regression.rs` | `Baseline`, `compare`, `Report::require_score` |
-| `sha256.rs` | dataset fingerprints |
+| `sha256.rs` | dataset and request fingerprints |
+| `testing.rs` | `TestProvider`, `FnProvider`, `Recorder`, `Replay` |
 
 ## Signature
 

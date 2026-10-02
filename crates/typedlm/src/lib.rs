@@ -15,9 +15,9 @@ mod output;
 mod program;
 mod provider;
 mod schema;
-#[cfg(feature = "eval")]
 mod sha256;
 mod signature;
+pub mod testing;
 
 pub use dialect::schema_for_dialect;
 pub use error::Error;
