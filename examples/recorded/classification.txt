@@ -1,0 +1,2 @@
+escalate: TicketClassification { urgency: High, category: Technical }
+TicketClassification { urgency: High, category: Billing } — 1 attempt(s), 318 tokens, model qwen3:32b

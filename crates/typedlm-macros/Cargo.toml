@@ -1,0 +1,17 @@
+[package]
+name = "typedlm-macros"
+description = "Derive macros for typedlm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "3", default-features = false, features = ["derive", "parsing", "printing", "proc-macro"] }

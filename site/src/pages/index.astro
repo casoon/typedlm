@@ -1,0 +1,111 @@
+---
+import {
+  Badge,
+  Badges,
+  BuildOutput,
+  CodeBlock,
+  Facts,
+  Features,
+  Hero,
+  Install,
+  Quickstart,
+  Terminal,
+} from '@casoon/pages-theme/components';
+import Base from '@casoon/pages-theme/layouts/Base.astro';
+import classification from '../../../examples/recorded/classification.txt?raw';
+import evaluation from '../../../examples/recorded/evaluation.txt?raw';
+
+const signature = `/// Classify a customer support ticket by urgency and category.
+#[derive(TypedLm, Serialize)]
+#[lm(output = TicketClassification)]
+struct ClassifyTicket {
+    text: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+struct TicketClassification {
+    urgency: Urgency,   // enum Urgency { Low, Medium, High }
+    category: Category, // enum Category { Billing, Technical, Shipping, Other }
+}`;
+
+const quickstart = `use typedlm::http::OpenAiCompatible;
+use typedlm::prelude::*;
+
+let classify = Program::<ClassifyTicket, _>::new(OpenAiCompatible::ollama("qwen3:32b"))
+    .temperature(0.0);
+
+let ticket = classify.run("Production database is down since 9:00").await?;
+match ticket.urgency {
+    Urgency::High => escalate(ticket).await?,
+    _ => queue(ticket).await?,
+}`;
+---
+
+<Base>
+  <Hero
+    title="LLM calls with a type signature."
+    lead="TypedLM turns a language model call into a Rust function: a struct goes in, a validated Rust type comes out. The same contract lets you measure the program on a labelled dataset."
+  >
+    <Install
+      commands={[
+        { label: 'cargo', command: 'cargo add typedlm --git https://github.com/casoon/typedlm' },
+      ]}
+    />
+    <Badges>
+      <Badge>MIT</Badge>
+      <Badge>MSRV 1.85</Badge>
+      <Badge>not on crates.io yet</Badge>
+    </Badges>
+    <Terminal slot="output" title="cargo run --example classification" dots ansi={classification} />
+  </Hero>
+
+  <Facts
+    items={[
+      { value: '4', label: 'output strategies, chosen per provider' },
+      { value: '4', label: 'direct dependencies without default features' },
+      { value: '0', label: 'async runtime required by the core' },
+      { value: '95 %', label: 'confidence interval on every evaluation score' },
+    ]}
+  />
+
+  <Features
+    items={[
+      {
+        title: 'Contracts instead of prompts',
+        body: 'Derive TypedLm on the input struct and name an ordinary output type. Doc comments become the instructions, the type becomes the JSON Schema.',
+      },
+      {
+        title: 'Every answer validated',
+        body: 'Extraction tolerates code fences and trailing commas, the schema check lists every violation with its path, your own rules run last. Invalid answers go back to the model with that list.',
+      },
+      {
+        title: 'Measured, not eyeballed',
+        body: 'Datasets in JSON Lines with partial labels, exact-match and field accuracy, and a report with confidence interval, repair and failure rates, latency and tokens.',
+      },
+      {
+        title: 'Any OpenAI-compatible endpoint',
+        body: 'OpenAI, local models via Ollama, or a router in front of other vendors. Schemas are rewritten for each provider; retries for 429 and 5xx are built in.',
+      },
+    ]}
+  />
+
+  <CodeBlock code={signature} lang="rust" title="The contract" label="Rust" />
+
+  <BuildOutput
+    caption="Recorded with qwen3:32b on a local Ollama (cargo run --example evaluation). Eight examples give an interval from 53 to 98 percent — the report says so."
+    file="examples/recorded/evaluation.txt"
+  >
+    <Terminal ansi={evaluation} />
+  </BuildOutput>
+
+  <Quickstart
+    lead="From contract to running call. The full walkthrough is in the documentation."
+    steps={[
+      'Add the crate from GitHub.',
+      'Describe the call as an input struct with <code>#[derive(TypedLm)]</code> and an output type.',
+      'Bind it to a provider with <code>Program::new</code> and call <code>run</code>.',
+    ]}
+  >
+    <CodeBlock code={quickstart} lang="rust" title="main.rs" label="Rust" />
+  </Quickstart>
+</Base>

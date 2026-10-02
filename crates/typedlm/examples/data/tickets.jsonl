@@ -1,0 +1,8 @@
+{"input": {"text": "Our production database has been down for an hour, nobody can log in."}, "expected": {"urgency": "High", "category": "Technical"}}
+{"input": {"text": "I was charged twice for my subscription this month."}, "expected": {"category": "Billing"}}
+{"input": {"text": "My parcel shows as delivered but it never arrived."}, "expected": {"category": "Shipping"}}
+{"input": {"text": "How do I change my profile picture?"}, "expected": {"urgency": "Low"}}
+{"input": {"text": "Can you send me a copy of last year's invoice?"}, "expected": {"urgency": "Low", "category": "Billing"}}
+{"input": {"text": "The checkout page shows error 500 for every customer."}, "expected": {"urgency": "High", "category": "Technical"}}
+{"input": {"text": "Please update the delivery address for order 4711 before it ships."}, "expected": {"category": "Shipping"}}
+{"input": {"text": "Do you have a dark mode?"}, "expected": {"urgency": "Low", "category": "Other"}}

@@ -1,0 +1,12 @@
+ClassifyTicket
+model           qwen3:32b
+examples        8
+exact match     87.5 %  (95 % CI 52.9 % – 97.8 %)
+  category      85.7 %  (6/7)
+  urgency       100.0 %  (5/5)
+valid           100.0 %
+repaired        0.0 %
+failed          0.0 %
+latency p50     96248 ms
+latency p95     121426 ms
+tokens          1099 in / 1925 out
