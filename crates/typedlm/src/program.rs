@@ -357,15 +357,21 @@ impl<S: Signature, P: Provider> Program<S, P> {
         Err(fail(error, attempts, usage))
     }
 
-    fn build_instructions(&self, schema_in_prompt: bool, schema: &Value) -> String {
-        let mut text = match &self.instructions {
+    /// The instructions sent to the model, without the schema: the custom ones or those
+    /// generated from the signature's description.
+    pub(crate) fn effective_instructions(&self) -> String {
+        match &self.instructions {
             Some(custom) => custom.clone(),
             None => format!(
                 "{}\n\nThe input is given as JSON. Respond with a single JSON value that \
                  matches the output schema.",
                 S::DESCRIPTION
             ),
-        };
+        }
+    }
+
+    fn build_instructions(&self, schema_in_prompt: bool, schema: &Value) -> String {
+        let mut text = self.effective_instructions();
         if schema_in_prompt {
             text.push_str("\n\nOutput JSON Schema:\n");
             text.push_str(&schema.to_string());

@@ -23,7 +23,7 @@ direct dependencies of your crate. Any async runtime works; the examples use tok
 | `derive` | yes | `#[derive(TypedLm)]` |
 | `http` | yes | `OpenAiCompatible`, using reqwest with rustls and the tokio timer |
 | `eval` | yes | `Dataset`, metrics and `evaluate` |
-| `optimize` | no | choosing worked examples automatically, via pathwise |
+| `optimize` | no | optimizing worked examples and instructions |
 
 Without default features the crate depends on `serde`, `serde_json`, `schemars` and `tracing` only,
 and on no async runtime. Bring your own `Provider` implementation in that case.

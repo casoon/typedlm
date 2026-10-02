@@ -346,6 +346,26 @@ where
     P: Provider,
     M: Metric<S>,
 {
+    evaluate_detailed(program, dataset, metric, options).await.0
+}
+
+/// One run's answer as JSON, or the error's `Display`.
+pub(crate) type Answer = Result<Value, String>;
+
+/// [`evaluate_with`] plus every run's answer as `(example index, answer)`, for tools that
+/// need the model output the report deliberately leaves out.
+pub(crate) async fn evaluate_detailed<S, P, M>(
+    program: &Program<S, P>,
+    dataset: &Dataset<S>,
+    metric: &M,
+    options: EvalOptions,
+) -> (Report, Vec<(usize, Answer)>)
+where
+    S: Signature + Clone,
+    S::Output: Serialize,
+    P: Provider,
+    M: Metric<S>,
+{
     let epochs = options.epochs.max(1);
     let jobs = (0..epochs).flat_map(|_| dataset.examples.iter().enumerate());
     let mut runs: Vec<Run<S::Output>> = stream::iter(jobs)
@@ -366,6 +386,7 @@ where
     let (mut valid, mut repaired) = (0, 0);
     let mut failures = Vec::new();
     let mut usage = Usage::default();
+    let mut answers: Vec<(usize, Answer)> = Vec::with_capacity(runs.len());
 
     for (index, elapsed, result) in runs {
         let example = &dataset.examples[index];
@@ -391,6 +412,11 @@ where
                 None
             }
         };
+        let answer = match &actual {
+            Some(object) => Ok(Value::Object(object.clone())),
+            None => Err(failures.last().map(|(_, e)| e.clone()).unwrap_or_default()),
+        };
+        answers.push((index, answer));
         for (name, want) in &example.expected {
             let field = fields.entry(name.clone()).or_insert_with(|| FieldReport {
                 name: name.clone(),
@@ -414,7 +440,7 @@ where
         .count();
     let scores: Vec<f64> = run_scores.iter().map(|s| mean(s)).collect();
     latencies.sort();
-    Report {
+    let report = Report {
         program: S::NAME.to_string(),
         dataset: dataset.fingerprint(),
         model: models.into_iter().max_by_key(|(_, n)| *n).map(|(m, _)| m),
@@ -434,7 +460,8 @@ where
         latency_p50_ms: percentile(&latencies, 50).as_millis() as u64,
         latency_p95_ms: percentile(&latencies, 95).as_millis() as u64,
         usage,
-    }
+    };
+    (report, answers)
 }
 
 fn mean(xs: &[f64]) -> f64 {

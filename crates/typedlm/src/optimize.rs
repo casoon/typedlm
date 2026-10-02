@@ -352,3 +352,249 @@ mod tests {
         assert_eq!(seeded_choice(3, 3, 1), vec![0, 1, 2]);
     }
 }
+
+/// Settings for [`optimize_instructions`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Reflective {
+    /// Proposals at most (default 6).
+    pub iterations: usize,
+    /// Model calls the run may spend, roughly: the baseline, each proposal and its
+    /// evaluation count, repairs do not (default 400).
+    pub max_calls: usize,
+    /// Mistakes shown to the teacher per proposal (default 5).
+    pub mistakes_shown: usize,
+    /// Calls in flight during an evaluation (default 4).
+    pub concurrency: usize,
+}
+
+impl Default for Reflective {
+    fn default() -> Self {
+        Self {
+            iterations: 6,
+            max_calls: 400,
+            mistakes_shown: 5,
+            concurrency: 4,
+        }
+    }
+}
+
+/// One proposal and how it scored.
+#[derive(Debug, Clone, PartialEq)]
+pub struct InstructionTrial {
+    pub instructions: String,
+    /// Validation score; `None` when the teacher gave no usable proposal.
+    pub score: Option<f64>,
+    pub accepted: bool,
+    /// Why the proposal failed, if it did.
+    pub error: Option<String>,
+}
+
+/// Outcome of [`optimize_instructions`].
+#[derive(Debug, Clone)]
+pub struct OptimizedInstructions {
+    /// The program with the best instructions, with that run as provenance.
+    pub compiled: CompiledProgram,
+    pub baseline: Report,
+    pub best: Report,
+    /// Paired comparison of `best` against `baseline`.
+    pub comparison: Comparison,
+    /// Every proposal, in order.
+    pub trials: Vec<InstructionTrial>,
+}
+
+/// A mistake shown to the teacher.
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+pub struct Mistake {
+    pub input: serde_json::Value,
+    pub expected: serde_json::Value,
+    /// The program's answer, if it produced one.
+    pub actual: Option<serde_json::Value>,
+    /// Why it produced none.
+    pub error: Option<String>,
+}
+
+/// The teacher's task: improve a program's instructions from its mistakes.
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+pub struct ProposeInstructions {
+    /// What the program is for, from its signature.
+    pub task: String,
+    pub current_instructions: String,
+    /// JSON Schema of the program's output.
+    pub output_schema: serde_json::Value,
+    pub mistakes: Vec<Mistake>,
+}
+
+/// The teacher's answer.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, schemars::JsonSchema)]
+pub struct ProposedInstructions {
+    /// The complete new instructions.
+    pub instructions: String,
+}
+
+impl Signature for ProposeInstructions {
+    type Output = ProposedInstructions;
+    const NAME: &'static str = "ProposeInstructions";
+    const DESCRIPTION: &'static str = "You improve the instructions of a language-model \
+        program. You get the program's task, its current instructions, the JSON Schema of \
+        its output, and examples it got wrong with the expected and the actual output. \
+        Write new, complete instructions that keep what works and prevent these mistakes. \
+        State general rules; do not quote or refer to the examples. Do not describe the \
+        output format beyond what the schema says.";
+
+    fn validate(output: &ProposedInstructions) -> Result<(), Vec<String>> {
+        if output.instructions.trim().is_empty() {
+            return Err(vec!["instructions must not be empty".into()]);
+        }
+        Ok(())
+    }
+}
+
+/// Improves a program's instructions from its mistakes: a teacher model proposes new
+/// instructions from the examples the current ones get wrong, each proposal is scored on
+/// `validation`, and better ones are kept.
+///
+/// The program's demonstrations, strategy and generation settings are kept; only its
+/// instructions change. The teacher sees validation inputs and the program's answers —
+/// pick a teacher those may be sent to.
+pub async fn optimize_instructions<S, P, M, T>(
+    program: &Program<S, P>,
+    teacher: &T,
+    validation: &Dataset<S>,
+    metric: &M,
+    options: Reflective,
+) -> Result<OptimizedInstructions, OptimizeError>
+where
+    S: Signature + Clone,
+    S::Output: Serialize,
+    P: Provider,
+    M: Metric<S>,
+    T: Provider,
+{
+    if validation.examples.is_empty() {
+        return Err(OptimizeError::EmptyValidation);
+    }
+    let per_evaluation = validation.examples.len();
+    // The baseline plus at least one proposal and its evaluation.
+    if options.max_calls < 2 * per_evaluation + 1 {
+        return Err(OptimizeError::BudgetTooSmall {
+            max_calls: options.max_calls,
+            per_evaluation,
+        });
+    }
+
+    let eval_options = EvalOptions {
+        concurrency: options.concurrency,
+        epochs: 1,
+    };
+    let base = program.compile();
+    let schema = crate::output_schema::<S>();
+    let proposer = Program::<ProposeInstructions, &T>::new(teacher);
+
+    let (baseline, answers) =
+        crate::eval::evaluate_detailed(program, validation, metric, eval_options).await;
+    let mut calls = per_evaluation;
+    let mut current = (program.effective_instructions(), baseline.clone(), answers);
+    let mut trials = Vec::new();
+
+    for iteration in 0..options.iterations {
+        if calls + 1 + per_evaluation > options.max_calls {
+            break;
+        }
+        let mistakes = mistakes(
+            validation,
+            &current.1,
+            &current.2,
+            options.mistakes_shown,
+            iteration,
+        );
+        if mistakes.is_empty() {
+            break;
+        }
+        calls += 1;
+        let request = ProposeInstructions {
+            task: S::DESCRIPTION.into(),
+            current_instructions: current.0.clone(),
+            output_schema: schema.clone(),
+            mistakes,
+        };
+        let proposal = match proposer.run(request).await {
+            Ok(proposal) => proposal.instructions,
+            Err(error) => {
+                trials.push(InstructionTrial {
+                    instructions: String::new(),
+                    score: None,
+                    accepted: false,
+                    error: Some(error.to_string()),
+                });
+                continue;
+            }
+        };
+
+        let mut candidate = base.clone();
+        candidate.instructions = Some(proposal.clone());
+        let candidate_program = Program::<S, &P>::from_parts(program.provider(), &candidate);
+        let (report, answers) =
+            crate::eval::evaluate_detailed(&candidate_program, validation, metric, eval_options)
+                .await;
+        calls += per_evaluation;
+        let accepted = report.score > current.1.score;
+        trials.push(InstructionTrial {
+            instructions: proposal.clone(),
+            score: Some(report.score),
+            accepted,
+            error: None,
+        });
+        if accepted {
+            current = (proposal, report, answers);
+        }
+    }
+
+    let (instructions, best, _) = current;
+    let mut compiled = base;
+    if best.score > baseline.score {
+        compiled.instructions = Some(instructions);
+    }
+    let compiled = compiled.with_provenance(&best);
+    let comparison = compare(&baseline, &best, 0.0).expect("same program, metric and dataset");
+    Ok(OptimizedInstructions {
+        compiled,
+        baseline,
+        best,
+        comparison,
+        trials,
+    })
+}
+
+/// Up to `limit` examples the program got wrong, rotating through them per iteration so
+/// the teacher sees different mistakes.
+fn mistakes<S: Signature>(
+    dataset: &Dataset<S>,
+    report: &Report,
+    answers: &[(usize, crate::eval::Answer)],
+    limit: usize,
+    iteration: usize,
+) -> Vec<Mistake> {
+    let wrong: Vec<&(usize, crate::eval::Answer)> = answers
+        .iter()
+        .filter(|(index, _)| report.scores.get(*index).is_some_and(|s| *s < 1.0))
+        .collect();
+    if wrong.is_empty() || limit == 0 {
+        return Vec::new();
+    }
+    let start = (iteration * limit) % wrong.len();
+    wrong
+        .iter()
+        .cycle()
+        .skip(start)
+        .take(limit.min(wrong.len()))
+        .map(|(index, answer)| {
+            let example = &dataset.examples[*index];
+            Mistake {
+                input: serde_json::to_value(&example.input).expect("inputs serialize to JSON"),
+                expected: serde_json::Value::Object(example.expected.clone()),
+                actual: answer.as_ref().ok().cloned(),
+                error: answer.as_ref().err().cloned(),
+            }
+        })
+        .collect()
+}

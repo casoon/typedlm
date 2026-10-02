@@ -76,8 +76,8 @@ the output type becomes the JSON Schema.
   reviewable JSON artefact with the evaluation it was accepted on; loading checks it
   against the signature.
 - **Optimization.** The optimizer chooses the worked examples that score best on a
-  validation set — from labelled examples or a teacher model's correct answers — and
-  returns them as a compiled program.
+  validation set and has a teacher model rewrite the instructions from the program's
+  mistakes; the result is a compiled program.
 - **Command line.** `typedlm-cli` runs programs across several models as a matrix,
   keeps every run as a snapshot and compares runs; the `typedlm` binary shows and
   compares stored reports, with exit codes for CI.
@@ -140,7 +140,7 @@ Without `TYPEDLM_API_KEY` the examples use a local Ollama; with it, the OpenAI A
 | `derive` | yes | `#[derive(TypedLm)]` |
 | `http` | yes | `OpenAiCompatible` (reqwest with rustls, tokio timer) |
 | `eval` | yes | datasets, metrics, `evaluate` |
-| `optimize` | no | choosing worked examples (`pathwise`; Rust 1.88) |
+| `optimize` | no | optimizing worked examples and instructions (`pathwise`; Rust 1.88) |
 
 Without default features the crate depends on `serde`, `serde_json`, `schemars` and
 `tracing` only, and on no async runtime.
@@ -149,7 +149,7 @@ Without default features the crate depends on `serde`, `serde_json`, `schemars` 
 
 Early development, not published on crates.io yet. Tested live against Ollama
 (qwen3:32b) with all four strategies; OpenAI has not been tested live yet. Not
-included yet: optimising instructions. MSRV 1.85 (1.88 with `optimize`).
+included yet: typed tools. MSRV 1.85 (1.88 with `optimize`).
 
 ## License
 

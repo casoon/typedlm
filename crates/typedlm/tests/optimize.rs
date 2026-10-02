@@ -204,3 +204,185 @@ fn partial_labels_are_not_candidates() {
     .unwrap();
     assert_eq!(demonstrations_from_labels(&dataset).len(), 1);
 }
+
+mod instructions {
+    use std::sync::Mutex;
+
+    use schemars::JsonSchema;
+    use serde::{Deserialize, Serialize};
+    use typedlm::eval::{Dataset, ExactMatch, Verdict};
+    use typedlm::optimize::{OptimizeError, Reflective, optimize_instructions};
+    use typedlm::prelude::*;
+    use typedlm::testing::FnProvider;
+    use typedlm::{ProviderError, Request};
+
+    #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
+    enum Urgency {
+        Low,
+        High,
+    }
+
+    #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+    struct Classification {
+        urgency: Urgency,
+    }
+
+    /// Classify a support ticket by urgency.
+    #[derive(TypedLm, Serialize, Deserialize, Clone, Debug)]
+    #[lm(output = Classification)]
+    struct Classify {
+        text: String,
+    }
+
+    const RULE: &str = "Outages are High.";
+
+    /// Calls an outage High only when the instructions say so.
+    fn student(request: &Request) -> Result<String, ProviderError> {
+        let outage = request.input["text"].as_str().unwrap().contains("down");
+        let knows = request.instructions.contains(RULE);
+        let urgency = if outage && knows { "High" } else { "Low" };
+        Ok(format!(r#"{{"urgency": "{urgency}"}}"#))
+    }
+
+    /// 10 tickets, half of them outages.
+    fn validation() -> Dataset<Classify> {
+        let lines: Vec<String> = (0..10)
+            .map(|i| {
+                let (text, urgency) =
+                    if i % 2 == 0 { ("service down", "High") } else { ("question", "Low") };
+                format!(r#"{{"input": {{"text": "{text} {i}"}}, "expected": {{"urgency": "{urgency}"}}}}"#)
+            })
+            .collect();
+        Dataset::from_jsonl_str(&lines.join("\n")).unwrap()
+    }
+
+    #[tokio::test]
+    async fn teacher_fixes_the_instructions_from_mistakes() {
+        let seen = Mutex::new(Vec::new());
+        let teacher = FnProvider::new(|request: &Request| {
+            let mistakes = request.input["mistakes"].as_array().unwrap();
+            seen.lock().unwrap().push(mistakes.len());
+            assert!(
+                mistakes
+                    .iter()
+                    .all(|m| m["expected"]["urgency"] == "High" && m["actual"]["urgency"] == "Low")
+            );
+            Ok(
+                serde_json::json!({ "instructions": format!("Classify urgency. {RULE}") })
+                    .to_string(),
+            )
+        });
+        let provider = FnProvider::new(student);
+        let program = Program::<Classify, _>::new(&provider);
+
+        let result = optimize_instructions(
+            &program,
+            &teacher,
+            &validation(),
+            &ExactMatch,
+            Reflective::default(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.baseline.score, 0.5);
+        assert_eq!(result.best.score, 1.0);
+        assert_eq!(result.comparison.verdict, Verdict::Improvement);
+        assert_eq!(result.trials.len(), 1, "stops once nothing is wrong");
+        assert!(result.trials[0].accepted);
+        assert!(
+            result
+                .compiled
+                .instructions
+                .as_deref()
+                .unwrap()
+                .contains(RULE)
+        );
+        assert_eq!(*seen.lock().unwrap(), [5]);
+
+        let restored = result.compiled.program::<Classify, _>(&provider).unwrap();
+        assert_eq!(
+            typedlm::eval::evaluate(&restored, &validation(), &ExactMatch, 2)
+                .await
+                .score,
+            1.0
+        );
+    }
+
+    #[tokio::test]
+    async fn useless_proposals_keep_the_original() {
+        let shown = Mutex::new(Vec::new());
+        let teacher = FnProvider::new(|request: &Request| {
+            let first = request.input["mistakes"][0]["input"]["text"]
+                .as_str()
+                .unwrap()
+                .to_string();
+            shown.lock().unwrap().push(first);
+            Ok(r#"{"instructions": "Be careful."}"#.into())
+        });
+        let provider = FnProvider::new(student);
+        let program = Program::<Classify, _>::new(&provider);
+        let options = Reflective {
+            iterations: 3,
+            mistakes_shown: 2,
+            ..Reflective::default()
+        };
+
+        let result = optimize_instructions(&program, &teacher, &validation(), &ExactMatch, options)
+            .await
+            .unwrap();
+        assert_eq!(result.trials.len(), 3);
+        assert!(
+            result
+                .trials
+                .iter()
+                .all(|t| !t.accepted && t.score == Some(0.5))
+        );
+        assert_eq!(
+            result.compiled.instructions, None,
+            "the original instructions stay"
+        );
+        assert_eq!(result.comparison.verdict, Verdict::NoSignificantChange);
+        let shown = shown.lock().unwrap();
+        assert_ne!(
+            shown[0], shown[1],
+            "each proposal sees other mistakes: {shown:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn failed_proposals_are_recorded_and_budget_is_checked() {
+        let teacher = FnProvider::new(|_: &Request| Ok("no json".into()));
+        let provider = FnProvider::new(student);
+        let program = Program::<Classify, _>::new(&provider).max_repairs(0);
+        let options = Reflective {
+            iterations: 2,
+            ..Reflective::default()
+        };
+
+        let result = optimize_instructions(&program, &teacher, &validation(), &ExactMatch, options)
+            .await
+            .unwrap();
+        assert_eq!(result.trials.len(), 2);
+        assert!(
+            result
+                .trials
+                .iter()
+                .all(|t| t.score.is_none() && t.error.is_some())
+        );
+
+        let small = Reflective {
+            max_calls: 15,
+            ..Reflective::default()
+        };
+        let err = optimize_instructions(&program, &teacher, &validation(), &ExactMatch, small)
+            .await
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            OptimizeError::BudgetTooSmall {
+                per_evaluation: 10,
+                ..
+            }
+        ));
+    }
+}

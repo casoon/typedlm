@@ -1,11 +1,17 @@
 ---
-title: Optimizing worked examples
-description: Let the optimizer choose the worked examples that score best on a validation set, and get the result as a compiled program.
+title: Optimization
+description: Let the optimizer choose worked examples and improve instructions against a validation set, and get the result as a compiled program.
 order: 8
 ---
 
-Which worked examples help a program is hard to guess. The optimizer (feature `optimize`) tries
-sets of demonstrations against a validation dataset and keeps the best one.
+Which worked examples help a program, and which instructions, is hard to guess. The optimizer
+(feature `optimize`) tries alternatives against a validation dataset and keeps what scores best:
+
+- **worked examples** — `optimize_few_shot` chooses demonstrations from a pool,
+- **instructions** — `optimize_instructions` has a teacher model rewrite them from the program's
+  mistakes.
+
+Both keep everything else about the program and return a compiled program.
 
 ## Candidates
 
@@ -59,6 +65,35 @@ The search is pathwise's budgeted local search, built for evaluations that are e
 - `comparison` — paired comparison of the two; `Verdict::NoSignificantChange` means the data does
   not show that the demonstrations help,
 - `trials` — every evaluated set with its score, in order.
+
+## Instructions
+
+```rust
+use typedlm::optimize::{Reflective, optimize_instructions};
+
+let teacher = OpenAiCompatible::new(url, "gpt-5").api_key(key);
+let options = Reflective { iterations: 6, max_calls: 400, mistakes_shown: 5, concurrency: 4 };
+let result = optimize_instructions(&program, &teacher, &validation, &ExactMatch, options).await?;
+```
+
+Each round:
+
+1. The program's mistakes on the validation set — input, expected output, actual output or error
+   — go to the teacher, up to `mistakes_shown`, rotating so each round sees others.
+2. The teacher proposes complete new instructions: general rules, not quotes of the examples.
+   The teacher is itself a TypedLM program (`ProposeInstructions` → `ProposedInstructions`), so its
+   answer is validated like any other.
+3. The proposal is scored on the validation set and kept if it scores higher.
+
+The run stops after `iterations` proposals, when the budget is spent, or when nothing is wrong any
+more. `trials` lists every proposal with its score; a failed proposal keeps its error. If no
+proposal beats the original, the compiled program keeps the original instructions.
+
+The teacher sees validation inputs and the program's answers. Choose a teacher those may be sent
+to.
+
+To optimize both, run `optimize_instructions`, load its compiled program, then run
+`optimize_few_shot` on it — or the other way round.
 
 ## Validation is not a test
 
