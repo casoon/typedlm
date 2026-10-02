@@ -233,8 +233,13 @@ pub struct Report {
     pub program: String,
     /// SHA-256 of the dataset's examples; reports are only comparable when it matches.
     pub dataset: String,
-    /// Model that answered most often.
+    /// Model that answered most often, as reported by the provider (often a dated
+    /// snapshot name).
     pub model: Option<String>,
+    /// Name for the run's configuration, e.g. the requested model; set by tools such
+    /// as `typedlm-cli`, `None` from [`evaluate`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
     pub metric: String,
     pub examples: usize,
     /// Runs per example; scores are the mean over them.
@@ -413,6 +418,7 @@ where
         program: S::NAME.to_string(),
         dataset: dataset.fingerprint(),
         model: models.into_iter().max_by_key(|(_, n)| *n).map(|(m, _)| m),
+        label: None,
         metric: metric.name().to_string(),
         examples: scores.len(),
         epochs,
@@ -472,6 +478,9 @@ impl fmt::Display for Report {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let pct = |x: f64| format!("{:.1} %", x * 100.0);
         writeln!(f, "{}", self.program)?;
+        if let Some(label) = &self.label {
+            writeln!(f, "run             {label}")?;
+        }
         if let Some(model) = &self.model {
             writeln!(f, "model           {model}")?;
         }

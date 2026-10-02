@@ -22,3 +22,6 @@ All notable changes to this project are documented in this file. The format foll
 - `typedlm::testing`: `TestProvider` (fixed or schema-valid answers, recorded requests),
   `FnProvider`, `Recorder` and `Replay` for offline tests.
 - `Provider` for `&P` and `Arc<P>`; `Request`, `Response` and `Capabilities` serialise.
+- `typedlm-cli`: the `Evals` harness (`run` across models with a matrix, `compare`, `history`,
+  snapshots under `.typedlm/evaluations`) and the `typedlm` binary for stored reports.
+- `Report::label` for the run's configuration, e.g. the requested model.

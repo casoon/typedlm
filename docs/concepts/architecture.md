@@ -10,6 +10,7 @@ order: 1
 | --- | --- |
 | `typedlm` | the library: signatures, programs, providers, validation, evaluation |
 | `typedlm-macros` | `#[derive(TypedLm)]`, used through `typedlm` |
+| `typedlm-cli` | `Evals` harness, snapshot store, the `typedlm` binary for stored reports |
 
 Modules in `crates/typedlm/src/`:
 

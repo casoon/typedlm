@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/typedlm", "crates/typedlm-macros"]
+members = ["crates/typedlm", "crates/typedlm-macros", "crates/typedlm-cli"]
 
 [workspace.package]
 version = "0.0.0"

@@ -1,0 +1,27 @@
+[package]
+name = "typedlm-cli"
+description = "Command line for TypedLM evaluations: run programs across models, compare with earlier runs, show history"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "typedlm"
+path = "src/main.rs"
+# Same name as the library crate `typedlm`; its rustdoc would overwrite the library's.
+doc = false
+
+[dependencies]
+typedlm = { path = "../typedlm", version = "0.0.0", default-features = false, features = ["eval"] }
+lexopt = "0.3"
+serde = "1"
+runemark = { version = "0.9", default-features = false }
+serde_json = "1"
+tokio = { version = "1", features = ["rt"] }
+
+[dev-dependencies]
+typedlm = { path = "../typedlm", version = "0.0.0", features = ["derive", "eval"] }
+schemars = { version = "1", default-features = false, features = ["derive", "std"] }
