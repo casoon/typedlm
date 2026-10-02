@@ -29,8 +29,8 @@ their individual calls.
 
 ## Status
 
-Early development, not published on crates.io. The API will change before 0.1. Tested live against
-a local Ollama with `qwen3:32b`; OpenAI has not been tested live yet.
+Version 0.1: the API may still change before 1.0. Tested live against a local Ollama with
+`qwen3:32b`; OpenAI has not been tested live yet.
 
 ## This documentation
 

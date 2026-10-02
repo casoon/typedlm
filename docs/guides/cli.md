@@ -8,7 +8,7 @@ order: 6
 
 - **A harness in your project.** It knows your signatures, so it can run them — on several models
   at once — and keeps every run as a snapshot.
-- **The `typedlm` binary.** It works on stored reports only: show, compare, history. No project
+- **The `typedlm` binary** (`cargo install typedlm-cli`). It works on stored reports only: show, compare, history. No project
   build needed, e.g. in CI.
 
 ## The harness
@@ -60,7 +60,7 @@ reports a dated model snapshot.
 ## The `typedlm` binary
 
 ```sh
-cargo install --git https://github.com/casoon/typedlm typedlm-cli
+cargo install typedlm-cli
 
 typedlm show .typedlm/evaluations/classify/2026-10-02T10-03-47.555Z-qwen3-32b.json
 typedlm compare baseline.json current.json --tolerance 0.02

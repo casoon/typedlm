@@ -11,7 +11,12 @@ export default defineConfig({
       name: 'TypedLM',
       description: 'Typed, testable LLM programs for Rust: typed contracts, validated answers, evaluation.',
       repo: 'casoon/typedlm',
+      version: '0.1.0',
       license: 'MIT',
+      packages: [
+        { label: 'crates.io', href: 'https://crates.io/crates/typedlm' },
+        { label: 'docs.rs', href: 'https://docs.rs/typedlm' },
+      ],
       docsGroups: {
         'getting-started': 'Getting started',
         guides: 'Guides',

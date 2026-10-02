@@ -48,13 +48,14 @@ match ticket.urgency {
   >
     <Install
       commands={[
-        { label: 'cargo', command: 'cargo add typedlm --git https://github.com/casoon/typedlm' },
+        { label: 'cargo', command: 'cargo add typedlm' },
+        { label: 'cli', command: 'cargo install typedlm-cli' },
       ]}
     />
     <Badges>
       <Badge>MIT</Badge>
       <Badge>MSRV 1.85</Badge>
-      <Badge>not on crates.io yet</Badge>
+      <Badge>crates.io 0.1.0</Badge>
     </Badges>
     <img
       slot="output"
@@ -116,7 +117,7 @@ match ticket.urgency {
   <Quickstart
     lead="From contract to running call. The full walkthrough is in the documentation."
     steps={[
-      'Add the crate from GitHub.',
+      'Add the crate: <code>cargo add typedlm</code>.',
       'Describe the call as an input struct with <code>#[derive(TypedLm)]</code> and an output type.',
       'Bind it to a provider with <code>Program::new</code> and call <code>run</code>.',
     ]}

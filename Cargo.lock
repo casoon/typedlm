@@ -1261,7 +1261,7 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "typedlm"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "futures-util",
  "pathwise",
@@ -1276,7 +1276,7 @@ dependencies = [
 
 [[package]]
 name = "typedlm-cli"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "lexopt",
  "runemark",
@@ -1289,7 +1289,7 @@ dependencies = [
 
 [[package]]
 name = "typedlm-macros"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -4,10 +4,8 @@ description: Add TypedLM from GitHub, pick the features you need, and check the 
 order: 1
 ---
 
-TypedLM is not on crates.io yet. Add it from the repository:
-
 ```sh
-cargo add typedlm --git https://github.com/casoon/typedlm
+cargo add typedlm
 cargo add serde --features derive
 cargo add schemars
 cargo add tokio --features macros,rt-multi-thread

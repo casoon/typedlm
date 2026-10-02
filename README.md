@@ -8,7 +8,7 @@ before your code sees it. The same contract lets you measure the program on a
 labelled dataset.
 
 <p align="center">
-  <img src="examples/recorded/classification.svg" width="562" alt="Terminal: with TYPEDLM_MODEL=qwen3:32b, cargo run --example classification prints 'escalate: TicketClassification { urgency: High, category: Technical }' and then 'TicketClassification { urgency: High, category: Billing } — 1 attempt(s), 318 tokens, model qwen3:32b'.">
+  <img src="https://raw.githubusercontent.com/casoon/typedlm/main/examples/recorded/classification.svg" width="562" alt="Terminal: with TYPEDLM_MODEL=qwen3:32b, cargo run --example classification prints 'escalate: TicketClassification { urgency: High, category: Technical }' and then 'TicketClassification { urgency: High, category: Billing } — 1 attempt(s), 318 tokens, model qwen3:32b'.">
 </p>
 
 <p align="center"><sub>A recorded run against a local Ollama, played with
@@ -50,6 +50,18 @@ match ticket.urgency {
 
 No prompt to write and no JSON to parse: the doc comment becomes the instruction,
 the output type becomes the JSON Schema.
+
+## Install
+
+```sh
+cargo add typedlm
+cargo add serde --features derive
+cargo add schemars
+```
+
+Your types derive `Serialize`, `Deserialize` and `JsonSchema`. Any async runtime works;
+the examples use tokio. Documentation: <https://casoon.github.io/typedlm/>, API:
+<https://docs.rs/typedlm>.
 
 ## What it does
 
@@ -115,7 +127,7 @@ println!("{report}");
 ```
 
 <p align="center">
-  <img src="examples/recorded/evaluation.svg" width="562" alt="Terminal: cargo run --example evaluation prints the report for ClassifyTicket with model qwen3:32b on 8 examples: exact match 87.5 % (95 % CI 52.9 % – 97.8 %), category 85.7 % (6/7), urgency 100.0 % (5/5), valid 100.0 %, repaired 0.0 %, failed 0.0 %, latency p50 96248 ms, p95 121426 ms, tokens 1099 in / 1925 out.">
+  <img src="https://raw.githubusercontent.com/casoon/typedlm/main/examples/recorded/evaluation.svg" width="562" alt="Terminal: cargo run --example evaluation prints the report for ClassifyTicket with model qwen3:32b on 8 examples: exact match 87.5 % (95 % CI 52.9 % – 97.8 %), category 85.7 % (6/7), urgency 100.0 % (5/5), valid 100.0 %, repaired 0.0 %, failed 0.0 %, latency p50 96248 ms, p95 121426 ms, tokens 1099 in / 1925 out.">
 </p>
 
 The interval is the point: eight examples say little, and the report shows it.
@@ -150,9 +162,9 @@ Without default features the crate depends on `serde`, `serde_json`, `schemars` 
 
 ## Status
 
-Early development, not published on crates.io yet. Tested live against Ollama
-(qwen3:32b) with all four strategies; OpenAI has not been tested live yet. Not
-in scope: multi-step agents. MSRV 1.85 (1.88 with `optimize`).
+0.1 — the API may still change before 1.0. Tested live against Ollama (qwen3:32b) with
+all four strategies and native tools; OpenAI has not been tested live yet. Not in scope:
+multi-step agents. MSRV 1.85 (1.88 with `optimize`).
 
 ## License
 
