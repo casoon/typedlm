@@ -82,6 +82,7 @@ fn request() -> Request {
         output_schema: serde_json::to_value(schemars::schema_for!(TicketClassification)).unwrap(),
         strategy: Strategy::NativeSchema,
         options: Default::default(),
+        demonstrations: Vec::new(),
         repair: Vec::new(),
     }
 }

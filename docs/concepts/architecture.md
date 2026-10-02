@@ -17,7 +17,8 @@ Modules in `crates/typedlm/src/`:
 | Module | Responsibility |
 | --- | --- |
 | `signature.rs` | the `Signature` trait |
-| `program.rs` | `Program`: strategy choice, instructions, repair loop, tracing |
+| `program.rs` | `Program`: strategy choice, instructions, worked examples, repair loop, tracing |
+| `compiled.rs` | `CompiledProgram`: configuration as JSON artefact, signature hash, checks on load |
 | `provider.rs` | `Provider`, `DynProvider`, `Request`, `Response`, `Capabilities` |
 | `dialect.rs` | `schema_for_dialect`: schema rewriting per provider |
 | `output.rs` | `parse_output`: the validation pipeline |

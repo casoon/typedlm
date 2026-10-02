@@ -4,6 +4,7 @@
 //! the input, [`Signature::Output`] is an ordinary Rust type the model's answer is
 //! validated against. A [`Provider`] executes requests against a model.
 
+pub mod compiled;
 mod dialect;
 mod error;
 #[cfg(feature = "eval")]
@@ -19,6 +20,7 @@ mod sha256;
 mod signature;
 pub mod testing;
 
+pub use compiled::{CompileError, CompiledProgram};
 pub use dialect::schema_for_dialect;
 pub use error::Error;
 pub use output::{output_schema, parse_output};
@@ -26,8 +28,8 @@ pub use program::{Execution, Failed, Program};
 pub use schema::Violation;
 
 pub use provider::{
-    Capabilities, DynProvider, FinishReason, GenerationOptions, Provider, ProviderError,
-    RepairTurn, Request, Response, SchemaDialect, Strategy, Usage,
+    Capabilities, Demonstration, DynProvider, FinishReason, GenerationOptions, Provider,
+    ProviderError, RepairTurn, Request, Response, SchemaDialect, Strategy, Usage,
 };
 pub use signature::Signature;
 

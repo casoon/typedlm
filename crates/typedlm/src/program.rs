@@ -8,10 +8,11 @@ use serde_json::Value;
 use tracing::Instrument;
 use tracing::field::Empty;
 
+use crate::compiled::CompiledProgram;
 use crate::dialect::schema_for_dialect;
 use crate::{
-    Error, GenerationOptions, Provider, RepairTurn, Request, Signature, Strategy, Usage,
-    output_schema, parse_output,
+    Demonstration, Error, GenerationOptions, Provider, RepairTurn, Request, Signature, Strategy,
+    Usage, output_schema, parse_output,
 };
 
 /// A signature bound to a provider: an executable, typed LLM call.
@@ -27,8 +28,24 @@ pub struct Program<S, P> {
     options: GenerationOptions,
     max_repairs: usize,
     record_content: bool,
+    demonstrations: Vec<Demonstration>,
     schema: Value,
     signature: PhantomData<fn() -> S>,
+}
+
+/// Shows the configuration, not the provider: providers may hold credentials.
+impl<S: Signature, P> fmt::Debug for Program<S, P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Program")
+            .field("signature", &S::NAME)
+            .field("instructions", &self.instructions)
+            .field("demonstrations", &self.demonstrations.len())
+            .field("strategy", &self.strategy)
+            .field("options", &self.options)
+            .field("max_repairs", &self.max_repairs)
+            .field("record_content", &self.record_content)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A successful run with what it cost.
@@ -81,6 +98,7 @@ impl<S: Signature, P: Provider> Program<S, P> {
             options: GenerationOptions::default(),
             max_repairs: 2,
             record_content: false,
+            demonstrations: Vec::new(),
             schema: output_schema::<S>(),
             signature: PhantomData,
         }
@@ -112,6 +130,46 @@ impl<S: Signature, P: Provider> Program<S, P> {
     /// the first invalid answer's error is returned as is.
     pub fn max_repairs(mut self, max_repairs: usize) -> Self {
         self.max_repairs = max_repairs;
+        self
+    }
+
+    /// The program's configuration as an artefact to review, store and load elsewhere
+    /// (see [`CompiledProgram`]).
+    pub fn compile(&self) -> CompiledProgram {
+        CompiledProgram {
+            format: crate::compiled::FORMAT,
+            program: S::NAME.into(),
+            signature: crate::compiled::signature_hash::<S>(),
+            instructions: self.instructions.clone(),
+            demonstrations: self.demonstrations.clone(),
+            strategy: self.strategy,
+            generation: self.options.clone(),
+            max_repairs: self.max_repairs,
+            provenance: None,
+        }
+    }
+
+    /// Builds a program from a compiled configuration that was already checked.
+    pub(crate) fn from_parts(provider: P, compiled: &CompiledProgram) -> Self {
+        let mut program = Self::new(provider);
+        program.instructions = compiled.instructions.clone();
+        program.demonstrations = compiled.demonstrations.clone();
+        program.strategy = compiled.strategy;
+        program.options = compiled.generation.clone();
+        program.max_repairs = compiled.max_repairs;
+        program
+    }
+
+    /// Adds a worked example, sent before every input. A few well-chosen examples often
+    /// help more than longer instructions, especially with small models.
+    pub fn demonstration(mut self, input: impl Into<S>, output: &S::Output) -> Self
+    where
+        S::Output: serde::Serialize,
+    {
+        self.demonstrations.push(Demonstration {
+            input: serde_json::to_value(input.into()).expect("inputs serialize to JSON"),
+            output: serde_json::to_value(output).expect("outputs serialize to JSON"),
+        });
         self
     }
 
@@ -231,6 +289,7 @@ impl<S: Signature, P: Provider> Program<S, P> {
                     output_schema: provider_schema.clone(),
                     strategy,
                     options: self.options.clone(),
+                    demonstrations: self.demonstrations.clone(),
                     repair: repair.clone(),
                 })
                 .await;

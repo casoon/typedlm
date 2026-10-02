@@ -159,9 +159,19 @@ pub struct Request {
     pub output_schema: Value,
     pub strategy: Strategy,
     pub options: GenerationOptions,
+    /// Worked examples, sent before the input as user/assistant turns.
+    #[serde(default)]
+    pub demonstrations: Vec<Demonstration>,
     /// Earlier answers and the feedback on them, oldest first; empty on the first
     /// attempt. Providers send each as an assistant turn followed by a user turn.
     pub repair: Vec<RepairTurn>,
+}
+
+/// A worked example: an input and the output the model should give for it.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct Demonstration {
+    pub input: Value,
+    pub output: Value,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -170,7 +180,7 @@ pub struct RepairTurn {
     pub feedback: String,
 }
 
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct GenerationOptions {
     pub temperature: Option<f32>,
     pub max_tokens: Option<u32>,

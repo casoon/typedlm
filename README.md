@@ -72,6 +72,9 @@ the output type becomes the JSON Schema.
   got worse. Several runs per example show how stable the answers are.
 - **Testing without a model.** Fixed answers, closures, schema-valid answers, and
   recording real interactions to replay them offline in `cargo test`.
+- **Compiled programs.** Worked examples, instructions and settings stored as a
+  reviewable JSON artefact with the evaluation it was accepted on; loading checks it
+  against the signature.
 - **Command line.** `typedlm-cli` runs programs across several models as a matrix,
   keeps every run as a snapshot and compares runs; the `typedlm` binary shows and
   compares stored reports, with exit codes for CI.
@@ -142,7 +145,7 @@ Without default features the crate depends on `serde`, `serde_json`, `schemars` 
 
 Early development, not published on crates.io yet. Tested live against Ollama
 (qwen3:32b) with all four strategies; OpenAI has not been tested live yet. Not
-included yet: compiled programs and prompt optimisation. MSRV 1.85.
+included yet: prompt optimisation. MSRV 1.85.
 
 ## License
 

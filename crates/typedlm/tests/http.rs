@@ -146,6 +146,43 @@ async fn tool_call_strategy_reads_arguments() {
 }
 
 #[tokio::test]
+async fn demonstrations_precede_the_input() {
+    let answer = json!({"role": "assistant", "content": "{\"number\": \"B\", \"total_cents\": 2, \"note\": null}"});
+    let (url, seen) = serve(vec![completion(answer, "stop")]).await;
+    let example = Invoice {
+        number: "A".into(),
+        total_cents: 1,
+        note: None,
+    };
+    Program::<ExtractInvoice, _>::new(OpenAiCompatible::new(url, "m"))
+        .demonstration("Invoice A, 0.01 EUR", &example)
+        .run("Invoice B, 0.02 EUR")
+        .await
+        .unwrap();
+
+    let body = seen.lock().unwrap()[0].1.clone();
+    let roles: Vec<&str> = body["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| m["role"].as_str().unwrap())
+        .collect();
+    assert_eq!(roles, ["system", "user", "assistant", "user"]);
+    assert_eq!(
+        body["messages"][1]["content"],
+        r#"{"text":"Invoice A, 0.01 EUR"}"#
+    );
+    assert_eq!(
+        body["messages"][2]["content"],
+        r#"{"note":null,"number":"A","total_cents":1}"#
+    );
+    assert_eq!(
+        body["messages"][3]["content"],
+        r#"{"text":"Invoice B, 0.02 EUR"}"#
+    );
+}
+
+#[tokio::test]
 async fn tool_call_written_as_text_is_unwrapped() {
     let text =
         r#"{"name": "respond", "arguments": {"number": "A", "total_cents": 2, "note": null}}"#;

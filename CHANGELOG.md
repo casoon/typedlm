@@ -25,3 +25,12 @@ All notable changes to this project are documented in this file. The format foll
 - `typedlm-cli`: the `Evals` harness (`run` across models with a matrix, `compare`, `history`,
   snapshots under `.typedlm/evaluations`) and the `typedlm` binary for stored reports.
 - `Report::label` for the run's configuration, e.g. the requested model.
+- Worked examples: `Program::demonstration`, sent before the input as user/assistant turns.
+- Compiled programs: `Program::compile`, `CompiledProgram` (JSON artefact with signature hash and
+  optional provenance), loading with checks of signature and demonstrations.
+- `Program` implements `Debug` without showing the provider.
+
+### Fixed
+
+- Reports, baselines and artefacts read back numbers exactly (`serde_json` with
+  `float_roundtrip`).

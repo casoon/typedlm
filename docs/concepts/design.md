@@ -40,7 +40,9 @@ runtime dependency.
 Error messages and traces carry metadata only. Raw answers stay in error fields, and inputs and
 answers enter traces only on request.
 
-## Optimisation separate from runtime
+## Configuration separate from runtime
 
-Planned: optimising instructions and examples produces an artefact that the production runtime
-loads. The optimiser will never be a dependency of the runtime.
+A good configuration — instructions, worked examples, settings — is stored as a compiled program:
+a JSON artefact that production loads and checks against the signature. Whatever produced it,
+tuning by hand today or an optimiser later, does not ship with the runtime; the optimiser will
+never be a dependency of it.

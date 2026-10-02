@@ -89,10 +89,12 @@ impl OpenAiCompatible {
     }
 
     fn body(&self, request: &Request) -> Value {
-        let mut messages = vec![
-            json!({ "role": "system", "content": request.instructions }),
-            json!({ "role": "user", "content": request.input.to_string() }),
-        ];
+        let mut messages = vec![json!({ "role": "system", "content": request.instructions })];
+        for demo in &request.demonstrations {
+            messages.push(json!({ "role": "user", "content": demo.input.to_string() }));
+            messages.push(json!({ "role": "assistant", "content": demo.output.to_string() }));
+        }
+        messages.push(json!({ "role": "user", "content": request.input.to_string() }));
         for turn in &request.repair {
             messages.push(json!({ "role": "assistant", "content": turn.response }));
             messages.push(json!({ "role": "user", "content": turn.feedback }));
