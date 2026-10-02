@@ -9,11 +9,11 @@ import {
   Hero,
   Install,
   Quickstart,
-  Terminal,
 } from '@casoon/pages-theme/components';
 import Base from '@casoon/pages-theme/layouts/Base.astro';
-import classification from '../../../examples/recorded/classification.txt?raw';
-import evaluation from '../../../examples/recorded/evaluation.txt?raw';
+// Animated SVGs built with castwright from examples/recorded/*.terminal.yaml.
+import classificationSvg from '../../../examples/recorded/classification.svg?url';
+import evaluationSvg from '../../../examples/recorded/evaluation.svg?url';
 
 const signature = `/// Classify a customer support ticket by urgency and category.
 #[derive(TypedLm, Serialize)]
@@ -56,7 +56,14 @@ match ticket.urgency {
       <Badge>MSRV 1.85</Badge>
       <Badge>not on crates.io yet</Badge>
     </Badges>
-    <Terminal slot="output" title="cargo run --example classification" dots ansi={classification} />
+    <img
+      slot="output"
+      class="terminal-demo"
+      src={classificationSvg}
+      width="562"
+      height="170"
+      alt="Terminal: with TYPEDLM_MODEL=qwen3:32b, cargo run --example classification prints 'escalate: TicketClassification { urgency: High, category: Technical }' and then 'TicketClassification { urgency: High, category: Billing } — 1 attempt(s), 318 tokens, model qwen3:32b'."
+    />
   </Hero>
 
   <Facts
@@ -95,7 +102,13 @@ match ticket.urgency {
     caption="Recorded with qwen3:32b on a local Ollama (cargo run --example evaluation). Eight examples give an interval from 53 to 98 percent — the report says so."
     file="examples/recorded/evaluation.txt"
   >
-    <Terminal ansi={evaluation} />
+    <img
+      class="terminal-demo"
+      src={evaluationSvg}
+      width="562"
+      height="314"
+      alt="Terminal: cargo run --example evaluation prints the report for ClassifyTicket with model qwen3:32b on 8 examples: exact match 87.5 % (95 % CI 52.9 % – 97.8 %), category 85.7 % (6/7), urgency 100.0 % (5/5), valid 100.0 %, repaired 0.0 %, failed 0.0 %, latency p50 96248 ms, p95 121426 ms, tokens 1099 in / 1925 out."
+    />
   </BuildOutput>
 
   <Quickstart
@@ -109,3 +122,12 @@ match ticket.urgency {
     <CodeBlock code={quickstart} lang="rust" title="main.rs" label="Rust" />
   </Quickstart>
 </Base>
+
+<style>
+  .terminal-demo {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+  }
+</style>

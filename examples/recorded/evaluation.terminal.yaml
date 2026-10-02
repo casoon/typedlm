@@ -1,0 +1,14 @@
+# Plays the recorded run in evaluation.txt (see README.md in this folder).
+version: 1
+terminal:
+  title: cargo run --example evaluation
+  cols: 64
+  rows: 15
+  theme: catppuccin-mocha
+steps:
+  - run: export TYPEDLM_MODEL=qwen3:32b
+  - run: cargo run --example evaluation
+  - wait: 1200
+  - show: evaluation.txt
+    lang: text
+  - wait: 3000

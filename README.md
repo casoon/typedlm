@@ -7,6 +7,13 @@ Rust struct, the output is a Rust type, and the answer is validated against it
 before your code sees it. The same contract lets you measure the program on a
 labelled dataset.
 
+<p align="center">
+  <img src="examples/recorded/classification.svg" width="562" alt="Terminal: with TYPEDLM_MODEL=qwen3:32b, cargo run --example classification prints 'escalate: TicketClassification { urgency: High, category: Technical }' and then 'TicketClassification { urgency: High, category: Billing } — 1 attempt(s), 318 tokens, model qwen3:32b'.">
+</p>
+
+<p align="center"><sub>A recorded run against a local Ollama, played with
+<a href="https://github.com/casoon/castwright">castwright</a>.</sub></p>
+
 ```rust
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -90,20 +97,9 @@ let report = evaluate(&classify, &dataset, &ExactMatch, 4).await;
 println!("{report}");
 ```
 
-```text
-ClassifyTicket
-model           qwen3:32b
-examples        8
-exact match     87.5 %  (95 % CI 52.9 % – 97.8 %)
-  category      85.7 %  (6/7)
-  urgency       100.0 %  (5/5)
-valid           100.0 %
-repaired        0.0 %
-failed          0.0 %
-latency p50     96248 ms
-latency p95     121426 ms
-tokens          1099 in / 1925 out
-```
+<p align="center">
+  <img src="examples/recorded/evaluation.svg" width="562" alt="Terminal: cargo run --example evaluation prints the report for ClassifyTicket with model qwen3:32b on 8 examples: exact match 87.5 % (95 % CI 52.9 % – 97.8 %), category 85.7 % (6/7), urgency 100.0 % (5/5), valid 100.0 %, repaired 0.0 %, failed 0.0 %, latency p50 96248 ms, p95 121426 ms, tokens 1099 in / 1925 out.">
+</p>
 
 The interval is the point: eight examples say little, and the report shows it.
 

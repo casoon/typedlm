@@ -1,0 +1,14 @@
+# Plays the recorded run in classification.txt (see README.md in this folder).
+version: 1
+terminal:
+  title: cargo run --example classification
+  cols: 64
+  rows: 7
+  theme: catppuccin-mocha
+steps:
+  - run: export TYPEDLM_MODEL=qwen3:32b
+  - run: cargo run --example classification
+  - wait: 1200
+  - show: classification.txt
+    lang: text
+  - wait: 3000
