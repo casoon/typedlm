@@ -21,8 +21,7 @@ schemars = { version = "1", default-features = false, features = ["derive", "std
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 tracing = { version = "0.1", default-features = false, features = ["std"] }
-# Until pathwise publishes budgeted_local_search (casoon/pathwise#2).
-pathwise = { git = "https://github.com/casoon/pathwise", rev = "c625574861a3979807cea1c8d03e6e94b82f1e70", optional = true }
+pathwise = { version = "0.3", optional = true }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"], optional = true }
 reqwest = { version = "0.13", default-features = false, features = ["rustls"], optional = true }
 tokio = { version = "1", features = ["time"], optional = true }

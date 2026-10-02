@@ -581,8 +581,9 @@ checksum = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe"
 
 [[package]]
 name = "pathwise"
-version = "0.2.0"
-source = "git+https://github.com/casoon/pathwise?rev=c625574861a3979807cea1c8d03e6e94b82f1e70#c625574861a3979807cea1c8d03e6e94b82f1e70"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5471a607b0640b08d1edb6b23b6c5a941eb3a76025fb6a1fcd2031415d4f6b00"
 
 [[package]]
 name = "percent-encoding"
