@@ -149,6 +149,10 @@ impl<S: Signature, P: Provider> Program<S, P> {
         }
     }
 
+    pub(crate) fn provider_supports(&self, strategy: Strategy) -> bool {
+        self.provider.capabilities().strategies.contains(&strategy)
+    }
+
     #[cfg(feature = "optimize")]
     pub(crate) fn provider(&self) -> &P {
         &self.provider
@@ -270,6 +274,10 @@ impl<S: Signature, P: Provider> Program<S, P> {
             .unwrap_or(Strategy::PromptOnly);
         span.record("typedlm.strategy", strategy.as_str());
         let provider_schema = schema_for_dialect(&self.schema, capabilities.dialect);
+        let tools = match strategy {
+            Strategy::ToolCall => crate::tools::tool_specs(&provider_schema).unwrap_or_default(),
+            _ => Vec::new(),
+        };
         let schema_in_prompt = match strategy {
             Strategy::JsonMode | Strategy::PromptOnly => true,
             Strategy::NativeSchema => !capabilities.native_schema_visible,
@@ -295,6 +303,7 @@ impl<S: Signature, P: Provider> Program<S, P> {
                     strategy,
                     options: self.options.clone(),
                     demonstrations: self.demonstrations.clone(),
+                    tools: tools.clone(),
                     repair: repair.clone(),
                 })
                 .await;

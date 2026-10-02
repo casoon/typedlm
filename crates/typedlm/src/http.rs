@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use serde_json::{Value, json};
 
+use crate::tools::ToolSpec;
 use crate::{
     Capabilities, FinishReason, Provider, ProviderError, Request, Response, SchemaDialect,
     Strategy, Usage,
@@ -109,6 +110,25 @@ impl OpenAiCompatible {
                     "json_schema": { "name": "output", "schema": request.output_schema, "strict": strict }
                 });
             }
+            Strategy::ToolCall if !request.tools.is_empty() => {
+                let tools: Vec<Value> = request
+                    .tools
+                    .iter()
+                    .map(|tool| {
+                        let mut function = json!({
+                            "name": tool.name,
+                            "parameters": tool.parameters,
+                            "strict": strict
+                        });
+                        if let Some(description) = &tool.description {
+                            function["description"] = json!(description);
+                        }
+                        json!({ "type": "function", "function": function })
+                    })
+                    .collect();
+                body["tools"] = json!(tools);
+                body["tool_choice"] = json!("required");
+            }
             Strategy::ToolCall => {
                 body["tools"] = json!([{
                     "type": "function",
@@ -184,21 +204,27 @@ impl OpenAiCompatible {
         }
     }
 
-    fn parse(&self, body: &Value, strategy: Strategy) -> Result<Response, ProviderError> {
+    fn parse(&self, body: &Value, request: &Request) -> Result<Response, ProviderError> {
+        let strategy = request.strategy;
         let choice = body
             .pointer("/choices/0")
             .ok_or_else(|| ProviderError::InvalidResponse("no choices in response".into()))?;
         let message = &choice["message"];
 
         let refusal = message["refusal"].as_str().filter(|r| !r.is_empty());
-        let content = match (refusal, message.pointer("/tool_calls/0/function/arguments")) {
+        let call = message.pointer("/tool_calls/0/function");
+        let content = match (refusal, call) {
             (Some(refusal), _) => refusal.to_string(),
-            (None, Some(Value::String(arguments))) => arguments.clone(),
+            (None, Some(call)) => {
+                let name = call["name"].as_str().unwrap_or_default();
+                let arguments = call["arguments"].as_str().unwrap_or("{}");
+                tool_output(&request.tools, name, arguments)
+            }
             _ => {
                 let text = message["content"].as_str().unwrap_or_default();
                 match strategy {
                     Strategy::ToolCall => {
-                        tool_call_in_text(text).unwrap_or_else(|| text.to_string())
+                        tool_call_in_text(&request.tools, text).unwrap_or_else(|| text.to_string())
                     }
                     _ => text.to_string(),
                 }
@@ -235,21 +261,36 @@ impl Provider for OpenAiCompatible {
 
     async fn complete(&self, request: Request) -> Result<Response, ProviderError> {
         let body = self.post(&self.body(&request)).await?;
-        self.parse(&body, request.strategy)
+        self.parse(&body, &request)
     }
 }
 
-/// Arguments of a `respond` call that the model wrote as text instead of a
-/// structured tool call — common with local models when the server's tool-call
-/// parsing does not recognise the output.
-fn tool_call_in_text(text: &str) -> Option<String> {
+/// The answer for a structured tool call: the arguments for the single `respond` tool, or
+/// the action in serde's externally tagged form when each variant is its own tool.
+fn tool_output(tools: &[ToolSpec], name: &str, arguments: &str) -> String {
+    match tools.iter().find(|tool| tool.name == name) {
+        Some(tool) => {
+            let arguments = serde_json::from_str(arguments).unwrap_or(Value::Null);
+            tool.output(arguments).to_string()
+        }
+        // Single `respond` tool, or a name we did not offer: validation reports the latter.
+        None => arguments.to_string(),
+    }
+}
+
+/// A tool call the model wrote as text (`{"name": …, "arguments": …}`) instead of a
+/// structured tool call — common with local models when the server's tool-call parsing
+/// does not recognise the output.
+fn tool_call_in_text(tools: &[ToolSpec], text: &str) -> Option<String> {
     let value = crate::json::extract_json(text).ok()?;
-    if value.get("name")?.as_str()? != "respond" {
+    let name = value.get("name")?.as_str()?;
+    if name != "respond" && !tools.iter().any(|tool| tool.name == name) {
         return None;
     }
-    match value.get("arguments")? {
-        Value::String(arguments) => Some(arguments.clone()),
-        arguments @ Value::Object(_) => Some(arguments.to_string()),
-        _ => None,
-    }
+    let arguments = match value.get("arguments")? {
+        Value::String(arguments) => arguments.clone(),
+        arguments @ Value::Object(_) => arguments.to_string(),
+        _ => return None,
+    };
+    Some(tool_output(tools, name, &arguments))
 }

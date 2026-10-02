@@ -162,6 +162,10 @@ pub struct Request {
     /// Worked examples, sent before the input as user/assistant turns.
     #[serde(default)]
     pub demonstrations: Vec<Demonstration>,
+    /// With [`Strategy::ToolCall`] and an action enum as output: one tool per variant.
+    /// Empty otherwise; providers then offer a single tool with the whole schema.
+    #[serde(default)]
+    pub tools: Vec<crate::tools::ToolSpec>,
     /// Earlier answers and the feedback on them, oldest first; empty on the first
     /// attempt. Providers send each as an assistant turn followed by a user turn.
     pub repair: Vec<RepairTurn>,

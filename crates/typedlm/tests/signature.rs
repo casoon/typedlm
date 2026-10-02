@@ -83,6 +83,7 @@ fn request() -> Request {
         strategy: Strategy::NativeSchema,
         options: Default::default(),
         demonstrations: Vec::new(),
+        tools: Vec::new(),
         repair: Vec::new(),
     }
 }

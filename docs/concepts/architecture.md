@@ -19,6 +19,7 @@ Modules in `crates/typedlm/src/`:
 | `signature.rs` | the `Signature` trait |
 | `program.rs` | `Program`: strategy choice, instructions, worked examples, repair loop, tracing |
 | `optimize.rs` | few-shot optimizer on pathwise's budgeted local search, reflective instruction optimizer (feature `optimize`) |
+| `tools.rs` | action enums as tools, `Action`, `Policy`, `ToolProgram` |
 | `compiled.rs` | `CompiledProgram`: configuration as JSON artefact, signature hash, checks on load |
 | `provider.rs` | `Provider`, `DynProvider`, `Request`, `Response`, `Capabilities` |
 | `dialect.rs` | `schema_for_dialect`: schema rewriting per provider |

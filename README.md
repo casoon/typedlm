@@ -78,6 +78,9 @@ the output type becomes the JSON Schema.
 - **Optimization.** The optimizer chooses the worked examples that score best on a
   validation set and has a teacher model rewrite the instructions from the program's
   mistakes; the result is a compiled program.
+- **Typed tools.** Actions are enum variants; the model chooses one, your policy
+  authorizes it and confirms writes, then your code executes it — one action per call,
+  native tool calls where the provider supports them.
 - **Command line.** `typedlm-cli` runs programs across several models as a matrix,
   keeps every run as a snapshot and compares runs; the `typedlm` binary shows and
   compares stored reports, with exit codes for CI.
@@ -149,7 +152,7 @@ Without default features the crate depends on `serde`, `serde_json`, `schemars` 
 
 Early development, not published on crates.io yet. Tested live against Ollama
 (qwen3:32b) with all four strategies; OpenAI has not been tested live yet. Not
-included yet: typed tools. MSRV 1.85 (1.88 with `optimize`).
+in scope: multi-step agents. MSRV 1.85 (1.88 with `optimize`).
 
 ## License
 

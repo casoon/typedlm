@@ -193,3 +193,59 @@ async fn small_evaluation() {
     }
     assert_eq!(report.failed, 0);
 }
+
+/// What to do with a support message.
+#[derive(Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
+enum SupportAction {
+    /// Look up the status of an order by its number.
+    FindOrder { order_id: u64 },
+    /// Cancel an order by its number, with the customer's reason.
+    CancelOrder { order_id: u64, reason: String },
+    /// Hand the conversation to a human agent.
+    Escalate,
+}
+
+/// Decide the single next action for a customer support message.
+#[derive(TypedLm, Serialize)]
+#[lm(output = SupportAction)]
+struct DecideAction {
+    message: String,
+}
+
+#[tokio::test]
+#[ignore = "needs a live endpoint"]
+async fn native_tools_choose_actions() {
+    let program = Program::<DecideAction, _>::new(provider())
+        .strategy(Strategy::ToolCall)
+        .temperature(0.0);
+    let cases = [
+        ("Where is my order 4711? It has not arrived.", "FindOrder"),
+        (
+            "Please cancel order 8812, I ordered the wrong size.",
+            "CancelOrder",
+        ),
+        ("I want to talk to a real person now.", "Escalate"),
+    ];
+    let mut failures = Vec::new();
+    for (message, expected) in cases {
+        match program.execute(message).await {
+            Ok(e) => {
+                let name = serde_json::to_value(&e.output).unwrap();
+                let name = name
+                    .as_str()
+                    .map(String::from)
+                    .or_else(|| name.as_object().and_then(|m| m.keys().next().cloned()))
+                    .unwrap();
+                println!(
+                    "{expected:<12} → {:?} in {} attempt(s)",
+                    e.output, e.attempts
+                );
+                if name != expected {
+                    failures.push(format!("{message}: expected {expected}, got {name}"));
+                }
+            }
+            Err(f) => failures.push(format!("{message}: {f} ({:?})", f.error)),
+        }
+    }
+    assert!(failures.is_empty(), "{failures:#?}");
+}

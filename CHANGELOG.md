@@ -38,6 +38,10 @@ All notable changes to this project are documented in this file. The format foll
   on a validation set; better proposals are kept. The teacher is a TypedLM program itself
   (`ProposeInstructions`).
 
+- Typed tools: action enums as output, `tool_specs` (one tool per variant, native tool calls with
+  `tool_choice: required`), `Action`, `Policy` (writes need confirmation by default),
+  `ToolProgram` and a `typedlm.tool` tracing span.
+
 ### Fixed
 
 - Reports, baselines and artefacts read back numbers exactly (`serde_json` with

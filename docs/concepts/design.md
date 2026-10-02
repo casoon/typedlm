@@ -22,6 +22,14 @@ the output is a separate type — not one struct with input and output fields.
 No code path hands unvalidated model output to the caller as a typed value. Every answer passes
 schema validation, deserialisation and the signature's own rules.
 
+Tools follow the same rule: the model chooses an action, a policy authorizes it and confirms
+anything that changes data — refusing by default — and only then does your code run it.
+
+## One action per call
+
+A tool program chooses one action and returns its result to the caller. There is no loop in which
+the model calls tools until it is done; a second step is a second, visible call in your code.
+
 ## Provider-independent core
 
 The core knows the `Provider` trait only. Vendor specifics — request format, schema dialect,

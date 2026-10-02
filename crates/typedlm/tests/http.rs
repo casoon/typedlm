@@ -145,6 +145,70 @@ async fn tool_call_strategy_reads_arguments() {
     assert!(body.get("response_format").is_none());
 }
 
+/// What to do with an invoice.
+#[derive(Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
+enum InvoiceAction {
+    /// Pay the invoice now.
+    Pay { number: String },
+    /// Ask a human to review it.
+    Review,
+}
+
+/// Decide what to do with an invoice.
+#[derive(TypedLm, Serialize)]
+#[lm(output = InvoiceAction)]
+struct DecideInvoice {
+    text: String,
+}
+
+#[tokio::test]
+async fn action_enums_become_native_tools() {
+    let pay = json!({"role": "assistant", "content": null, "tool_calls": [
+        {"id": "1", "type": "function", "function": {"name": "Pay", "arguments": "{\"number\": \"R-1\"}"}}
+    ]});
+    let review = json!({"role": "assistant", "content": null, "tool_calls": [
+        {"id": "2", "type": "function", "function": {"name": "Review", "arguments": "{}"}}
+    ]});
+    let as_text = json!({"role": "assistant", "content": "{\"name\": \"Pay\", \"arguments\": {\"number\": \"R-2\"}}"});
+    let (url, seen) = serve(vec![
+        completion(pay, "tool_calls"),
+        completion(review, "tool_calls"),
+        completion(as_text, "stop"),
+    ])
+    .await;
+    let program = Program::<DecideInvoice, _>::new(OpenAiCompatible::new(url, "m"))
+        .strategy(Strategy::ToolCall);
+
+    assert_eq!(
+        program.run("x").await.unwrap(),
+        InvoiceAction::Pay {
+            number: "R-1".into()
+        }
+    );
+    assert_eq!(program.run("x").await.unwrap(), InvoiceAction::Review);
+    assert_eq!(
+        program.run("x").await.unwrap(),
+        InvoiceAction::Pay {
+            number: "R-2".into()
+        }
+    );
+
+    let body = seen.lock().unwrap()[0].1.clone();
+    assert_eq!(body["tool_choice"], "required");
+    let tools = body["tools"].as_array().unwrap();
+    let names: Vec<&str> = tools
+        .iter()
+        .map(|t| t["function"]["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["Pay", "Review"]);
+    assert_eq!(tools[0]["function"]["description"], "Pay the invoice now.");
+    assert_eq!(
+        tools[0]["function"]["parameters"]["additionalProperties"], false,
+        "strict dialect"
+    );
+    assert_eq!(tools[0]["function"]["strict"], true);
+}
+
 #[tokio::test]
 async fn demonstrations_precede_the_input() {
     let answer = json!({"role": "assistant", "content": "{\"number\": \"B\", \"total_cents\": 2, \"note\": null}"});

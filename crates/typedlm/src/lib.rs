@@ -21,6 +21,7 @@ mod schema;
 mod sha256;
 mod signature;
 pub mod testing;
+pub mod tools;
 
 pub use compiled::{CompileError, CompiledProgram};
 pub use dialect::schema_for_dialect;
