@@ -149,6 +149,11 @@ impl<S: Signature, P: Provider> Program<S, P> {
         }
     }
 
+    #[cfg(feature = "optimize")]
+    pub(crate) fn provider(&self) -> &P {
+        &self.provider
+    }
+
     /// Builds a program from a compiled configuration that was already checked.
     pub(crate) fn from_parts(provider: P, compiled: &CompiledProgram) -> Self {
         let mut program = Self::new(provider);

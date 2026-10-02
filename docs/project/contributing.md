@@ -13,7 +13,8 @@ order: 1
 - `cargo test --workspace --all-features`
 - `cargo check -p typedlm --no-default-features` — the core builds without HTTP, derive and eval
 - `cargo doc` with warnings as errors
-- `cargo +1.85 check` — the minimum supported Rust version
+- `cargo +1.85 check` without `optimize` and `cargo +1.88.0 check` with it — the minimum
+  supported Rust versions
 
 CI runs the same on pull requests and pushes to `main`.
 

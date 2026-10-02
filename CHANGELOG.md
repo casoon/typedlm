@@ -30,6 +30,10 @@ All notable changes to this project are documented in this file. The format foll
   optional provenance), loading with checks of signature and demonstrations.
 - `Program` implements `Debug` without showing the provider.
 
+- Optimizer (feature `optimize`): `optimize_few_shot` chooses demonstrations by budgeted local
+  search on a validation set; candidates from `demonstrations_from_labels` or
+  `bootstrap_demonstrations`; result as `CompiledProgram` with a paired comparison.
+
 ### Fixed
 
 - Reports, baselines and artefacts read back numbers exactly (`serde_json` with

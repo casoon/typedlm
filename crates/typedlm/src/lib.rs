@@ -12,6 +12,8 @@ pub mod eval;
 #[cfg(feature = "http")]
 pub mod http;
 mod json;
+#[cfg(feature = "optimize")]
+pub mod optimize;
 mod output;
 mod program;
 mod provider;

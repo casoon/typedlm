@@ -23,6 +23,7 @@ direct dependencies of your crate. Any async runtime works; the examples use tok
 | `derive` | yes | `#[derive(TypedLm)]` |
 | `http` | yes | `OpenAiCompatible`, using reqwest with rustls and the tokio timer |
 | `eval` | yes | `Dataset`, metrics and `evaluate` |
+| `optimize` | no | choosing worked examples automatically, via pathwise |
 
 Without default features the crate depends on `serde`, `serde_json`, `schemars` and `tracing` only,
 and on no async runtime. Bring your own `Provider` implementation in that case.
@@ -31,5 +32,5 @@ and on no async runtime. Bring your own `Provider` implementation in that case.
 
 | | Minimum |
 | --- | --- |
-| Rust | 1.85 (edition 2024) |
+| Rust | 1.85 (edition 2024); 1.88 with the `optimize` feature |
 | Endpoint | any OpenAI-compatible chat completions API, or your own `Provider` |

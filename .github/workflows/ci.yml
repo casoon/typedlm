@@ -36,4 +36,14 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@1.85
       - uses: Swatinem/rust-cache@v2
-      - run: cargo check --workspace --all-targets --all-features
+      # Everything but `optimize`, whose dependency pathwise needs Rust 1.88.
+      - run: cargo check --workspace --all-targets --features typedlm/derive,typedlm/http,typedlm/eval
+
+  msrv-optimize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.88
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check -p typedlm --all-targets --all-features
