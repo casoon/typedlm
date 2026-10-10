@@ -17,6 +17,7 @@ export default defineConfig({
         { label: 'crates.io', href: 'https://crates.io/crates/typedlm' },
         { label: 'docs.rs', href: 'https://docs.rs/typedlm' },
       ],
+      mdxComponents: './src/mdx-components.ts',
       docsGroups: {
         'getting-started': 'Getting started',
         guides: 'Guides',

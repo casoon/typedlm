@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "type": "flow",
+  "title": "One program run",
+  "description": "Program::execute builds a request, the provider calls the model, and the answer is validated. A repairable mistake goes back to the model with feedback until the repairs are used up.",
+  "source": "crates/typedlm/src/program.rs",
+  "width": 760,
+  "height": 1000,
+  "flow": {
+    "nodes": [
+      {
+        "id": "input",
+        "label": "Input",
+        "sublabel": "your struct",
+        "kind": "start"
+      },
+      {
+        "id": "request",
+        "label": "Build request",
+        "sublabel": "instructions, schema, examples"
+      },
+      {
+        "id": "provider",
+        "label": "Provider",
+        "sublabel": "retries 429 and 5xx",
+        "kind": "io"
+      },
+      {
+        "id": "valid",
+        "label": "Answer valid?",
+        "sublabel": "parse_output",
+        "kind": "decision"
+      },
+      {
+        "id": "output",
+        "label": "Typed output",
+        "kind": "end"
+      },
+      {
+        "id": "left",
+        "label": "Repairs left?",
+        "kind": "decision"
+      },
+      {
+        "id": "feedback",
+        "label": "Repair feedback",
+        "sublabel": "every violation"
+      },
+      {
+        "id": "provider-error",
+        "label": "Error::Provider",
+        "kind": "end"
+      },
+      {
+        "id": "not-repairable",
+        "label": "Error::Refusal",
+        "sublabel": "or Truncated",
+        "kind": "end"
+      },
+      {
+        "id": "limit",
+        "label": "RetryLimitExceeded",
+        "sublabel": "every attempt's error",
+        "kind": "end"
+      }
+    ],
+    "edges": [
+      {
+        "from": "input",
+        "to": "request"
+      },
+      {
+        "from": "request",
+        "to": "provider"
+      },
+      {
+        "from": "provider",
+        "to": "valid"
+      },
+      {
+        "from": "provider",
+        "to": "provider-error",
+        "label": "fails"
+      },
+      {
+        "from": "valid",
+        "to": "output",
+        "label": "yes"
+      },
+      {
+        "from": "valid",
+        "to": "left",
+        "label": "repairable"
+      },
+      {
+        "from": "valid",
+        "to": "not-repairable",
+        "label": "refused, cut off"
+      },
+      {
+        "from": "left",
+        "to": "feedback",
+        "label": "yes"
+      },
+      {
+        "from": "left",
+        "to": "limit",
+        "label": "no"
+      },
+      {
+        "from": "feedback",
+        "to": "request",
+        "label": "next attempt",
+        "dash": "dashed"
+      }
+    ],
+    "mainPath": [
+      "input",
+      "request",
+      "provider",
+      "valid",
+      "output"
+    ],
+    "orientation": "portrait"
+  }
+}

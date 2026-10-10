@@ -42,6 +42,8 @@ supported. An optional `validate` function holds domain rules.
 
 ## A call, step by step
 
+<Diagram name="call-flow" />
+
 1. `Program::execute` serialises the input to JSON.
 2. It asks the provider for its `Capabilities` and chooses the strategy: the one set on the
    program, otherwise the strongest the provider supports.

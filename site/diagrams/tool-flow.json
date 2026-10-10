@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "type": "flow",
+  "title": "From the model's choice to an executed action",
+  "description": "ToolProgram::run: the model chooses one action, the policy authorizes it, actions that change data also need confirmation, and only then does your code execute it.",
+  "source": "crates/typedlm/src/tools.rs",
+  "width": 760,
+  "height": 1000,
+  "flow": {
+    "nodes": [
+      {
+        "id": "choose",
+        "label": "Model chooses",
+        "sublabel": "one action",
+        "kind": "start"
+      },
+      {
+        "id": "valid",
+        "label": "Valid action?",
+        "kind": "decision"
+      },
+      {
+        "id": "authorize",
+        "label": "policy.authorize",
+        "kind": "decision"
+      },
+      {
+        "id": "writes",
+        "label": "Changes data?",
+        "sublabel": "Effect::Write",
+        "kind": "decision"
+      },
+      {
+        "id": "confirm",
+        "label": "policy.confirm",
+        "sublabel": "refuses by default",
+        "kind": "decision"
+      },
+      {
+        "id": "execute",
+        "label": "Your code executes",
+        "sublabel": "Action::execute"
+      },
+      {
+        "id": "outcome",
+        "label": "Outcome",
+        "kind": "end"
+      },
+      {
+        "id": "stopped",
+        "label": "ToolError",
+        "sublabel": "says which step",
+        "kind": "end"
+      }
+    ],
+    "edges": [
+      {
+        "from": "choose",
+        "to": "valid"
+      },
+      {
+        "from": "valid",
+        "to": "authorize",
+        "label": "yes"
+      },
+      {
+        "from": "valid",
+        "to": "stopped",
+        "label": "Choice"
+      },
+      {
+        "from": "authorize",
+        "to": "writes",
+        "label": "allowed"
+      },
+      {
+        "from": "authorize",
+        "to": "stopped",
+        "label": "Denied"
+      },
+      {
+        "from": "writes",
+        "to": "execute",
+        "label": "no"
+      },
+      {
+        "from": "writes",
+        "to": "confirm",
+        "label": "yes"
+      },
+      {
+        "from": "confirm",
+        "to": "execute",
+        "label": "confirmed"
+      },
+      {
+        "from": "confirm",
+        "to": "stopped",
+        "label": "NotConfirmed"
+      },
+      {
+        "from": "execute",
+        "to": "outcome",
+        "label": "ok"
+      },
+      {
+        "from": "execute",
+        "to": "stopped",
+        "label": "Execution"
+      }
+    ],
+    "mainPath": [
+      "choose",
+      "valid",
+      "authorize",
+      "writes",
+      "execute",
+      "outcome"
+    ],
+    "orientation": "portrait"
+  }
+}
