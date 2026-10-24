@@ -10,6 +10,7 @@ export default defineConfig({
     casoonPages({
       name: 'TypedLM',
       description: 'Typed, testable LLM programs for Rust: typed contracts, validated answers, evaluation.',
+      tagline: 'Typed, testable LLM programs in Rust',
       repo: 'casoon/typedlm',
       version: '0.1.0',
       license: 'MIT',
