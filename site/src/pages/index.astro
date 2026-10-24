@@ -11,6 +11,7 @@ import {
   Quickstart,
 } from '@casoon/pages-theme/components';
 import Base from '@casoon/pages-theme/layouts/Base.astro';
+import config from 'virtual:casoon-pages/config';
 // Animated SVGs built with castwright from examples/recorded/*.terminal.yaml.
 import classificationSvg from '../../../examples/recorded/classification.svg?url';
 import evaluationSvg from '../../../examples/recorded/evaluation.svg?url';
@@ -55,7 +56,7 @@ match ticket.urgency {
     <Badges>
       <Badge>MIT</Badge>
       <Badge>MSRV 1.85</Badge>
-      <Badge>crates.io 0.1.0</Badge>
+      <Badge>crates.io {config.version}</Badge>
     </Badges>
     <img
       slot="output"
