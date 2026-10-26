@@ -13,6 +13,6 @@ After changing a `.txt` or `.terminal.yaml`, rebuild the SVGs:
 ```sh
 cd examples/recorded
 for f in *.terminal.yaml; do
-  npx -y -p @casoon/castwright@0.4.0 -p shiki castwright build "$f" --format svg -o .
+  npx -y -p @casoon/castwright@0.5.0 -p shiki castwright build "$f" --format svg -o .
 done
 ```
