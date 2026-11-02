@@ -3,6 +3,13 @@
 All notable changes to this project are documented in this file. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Changed
+
+- **Docs:** the project site uses the current shared theme (0.12.3) and ends with a link to the
+  quickstart.
+
 ## [0.1.0] - 2026-10-02
 
 ### Added

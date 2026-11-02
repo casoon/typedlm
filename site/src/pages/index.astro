@@ -3,6 +3,7 @@ import {
   Badge,
   Badges,
   BuildOutput,
+  CallToAction,
   CodeBlock,
   Facts,
   Features,
@@ -11,6 +12,7 @@ import {
   Quickstart,
 } from '@casoon/pages-theme/components';
 import Base from '@casoon/pages-theme/layouts/Base.astro';
+import { url } from '@casoon/pages-theme/url';
 import config from 'virtual:casoon-pages/config';
 // Animated SVGs built with castwright from examples/recorded/*.terminal.yaml.
 import classificationSvg from '../../../examples/recorded/classification.svg?url';
@@ -125,6 +127,12 @@ match ticket.urgency {
   >
     <CodeBlock code={quickstart} lang="rust" title="main.rs" label="Rust" />
   </Quickstart>
+
+  <CallToAction
+    title="Your first typed call."
+    href={url('docs/getting-started/quickstart/')}
+    label="Read the quickstart"
+  />
 </Base>
 
 <style>
